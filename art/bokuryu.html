@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>墨流 | Bokuryū - Ink Flow</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;500&family=Poppins:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --anthropic-dark: #141413;
+            --anthropic-light: #faf9f5;
+            --anthropic-mid-gray: #b0aea5;
+            --anthropic-light-gray: #e8e6dc;
+            --anthropic-orange: #d97757;
+            --sumi-black: #1a1a1a;
+            --sumi-gray: #4a4a4a;
+            --shu-red: #c73e3a;
+            --washi: #f5f2eb;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', 'Noto Serif JP', sans-serif;
+            background: linear-gradient(180deg, var(--washi) 0%, #e8e4db 100%);
+            min-height: 100vh;
+            color: var(--anthropic-dark);
+        }
+
+        .container {
+            display: flex;
+            min-height: 100vh;
+            padding: 20px;
+            gap: 20px;
+        }
+
+        .sidebar {
+            width: 300px;
+            flex-shrink: 0;
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(10px);
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(20, 20, 19, 0.08);
+            overflow-y: auto;
+        }
+
+        .sidebar h1 {
+            font-family: 'Noto Serif JP', serif;
+            font-size: 28px;
+            font-weight: 500;
+            color: var(--sumi-black);
+            margin-bottom: 4px;
+            letter-spacing: 0.1em;
+        }
+
+        .sidebar .subtitle {
+            font-family: 'Noto Serif JP', serif;
+            color: var(--anthropic-mid-gray);
+            font-size: 13px;
+            margin-bottom: 28px;
+            letter-spacing: 0.05em;
+        }
+
+        .control-section {
+            margin-bottom: 28px;
+        }
+
+        .control-section h3 {
+            font-family: 'Noto Serif JP', serif;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--sumi-gray);
+            margin-bottom: 14px;
+            letter-spacing: 0.1em;
+            border-bottom: 1px solid var(--anthropic-light-gray);
+            padding-bottom: 8px;
+        }
+
+        .seed-input {
+            width: 100%;
+            background: var(--washi);
+            padding: 10px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            margin-bottom: 10px;
+            border: 1px solid var(--anthropic-light-gray);
+            text-align: center;
+        }
+
+        .seed-input:focus {
+            outline: none;
+            border-color: var(--sumi-gray);
+        }
+
+        .seed-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            margin-bottom: 6px;
+        }
+
+        .control-group {
+            margin-bottom: 16px;
+        }
+
+        .control-group label {
+            display: block;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--sumi-gray);
+            margin-bottom: 6px;
+            letter-spacing: 0.05em;
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .slider-container input[type="range"] {
+            flex: 1;
+            height: 3px;
+            background: var(--anthropic-light-gray);
+            border-radius: 2px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .slider-container input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            background: var(--sumi-black);
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .slider-container input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.15);
+            background: var(--sumi-gray);
+        }
+
+        .value-display {
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            color: var(--anthropic-mid-gray);
+            min-width: 50px;
+            text-align: right;
+        }
+
+        .color-group {
+            margin-bottom: 12px;
+        }
+
+        .color-group label {
+            display: block;
+            font-size: 11px;
+            color: var(--anthropic-mid-gray);
+            margin-bottom: 4px;
+        }
+
+        .color-picker-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .color-picker-container input[type="color"] {
+            width: 28px;
+            height: 28px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            background: none;
+            padding: 0;
+        }
+
+        .color-value {
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            color: var(--anthropic-mid-gray);
+        }
+
+        .button {
+            background: var(--sumi-black);
+            color: white;
+            border: none;
+            padding: 9px 14px;
+            border-radius: 5px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            width: 100%;
+            letter-spacing: 0.05em;
+        }
+
+        .button:hover {
+            background: var(--sumi-gray);
+            transform: translateY(-1px);
+        }
+
+        .button.secondary {
+            background: var(--anthropic-mid-gray);
+        }
+
+        .button.secondary:hover {
+            background: #9a9890;
+        }
+
+        .button.shu {
+            background: var(--shu-red);
+        }
+
+        .button.shu:hover {
+            background: #a83230;
+        }
+
+        .button-row {
+            display: flex;
+            gap: 6px;
+        }
+
+        .button-row .button {
+            flex: 1;
+        }
+
+        .canvas-area {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 0;
+        }
+
+        #canvas-container {
+            width: 100%;
+            max-width: 900px;
+            border-radius: 4px;
+            overflow: hidden;
+            box-shadow: 0 15px 40px rgba(26, 26, 26, 0.15);
+            background: white;
+        }
+
+        #canvas-container canvas {
+            display: block;
+            width: 100% !important;
+            height: auto !important;
+        }
+
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Noto Serif JP', serif;
+            font-size: 16px;
+            color: var(--anthropic-mid-gray);
+            padding: 100px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+            .sidebar {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <h1>墨流</h1>
+            <div class="subtitle">ぼくりゅう — Ink Flow Field</div>
+
+            <!-- Seed -->
+            <div class="control-section">
+                <h3>種</h3>
+                <input type="number" id="seed-input" class="seed-input" value="42" onchange="updateSeed()">
+                <div class="seed-controls">
+                    <button class="button secondary" onclick="previousSeed()">← 前</button>
+                    <button class="button secondary" onclick="nextSeed()">次 →</button>
+                </div>
+                <button class="button shu" onclick="randomSeedAndUpdate()">↻ 乱</button>
+            </div>
+
+            <!-- Parameters -->
+            <div class="control-section">
+                <h3>筆致</h3>
+                
+                <div class="control-group">
+                    <label>粒子数</label>
+                    <div class="slider-container">
+                        <input type="range" id="particleCount" min="2000" max="15000" step="500" value="8000" oninput="updateParam('particleCount', this.value)">
+                        <span class="value-display" id="particleCount-value">8000</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>流れの速さ</label>
+                    <div class="slider-container">
+                        <input type="range" id="flowSpeed" min="0.5" max="4.0" step="0.1" value="1.5" oninput="updateParam('flowSpeed', this.value)">
+                        <span class="value-display" id="flowSpeed-value">1.5</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>墨の濃さ</label>
+                    <div class="slider-container">
+                        <input type="range" id="inkDensity" min="0.01" max="0.08" step="0.005" value="0.025" oninput="updateParam('inkDensity', this.value)">
+                        <span class="value-display" id="inkDensity-value">0.025</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>筆の勢い</label>
+                    <div class="slider-container">
+                        <input type="range" id="noiseScale" min="0.001" max="0.01" step="0.001" value="0.004" oninput="updateParam('noiseScale', this.value)">
+                        <span class="value-display" id="noiseScale-value">0.004</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>朱の割合 (%)</label>
+                    <div class="slider-container">
+                        <input type="range" id="shuRatio" min="0" max="30" step="1" value="8" oninput="updateParam('shuRatio', this.value)">
+                        <span class="value-display" id="shuRatio-value">8</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>余白の広さ</label>
+                    <div class="slider-container">
+                        <input type="range" id="margin" min="50" max="200" step="10" value="80" oninput="updateParam('margin', this.value)">
+                        <span class="value-display" id="margin-value">80</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Colors -->
+            <div class="control-section">
+                <h3>墨色</h3>
+                
+                <div class="color-group">
+                    <label>墨（濃）</label>
+                    <div class="color-picker-container">
+                        <input type="color" id="colorSumi" value="#1a1a1a" onchange="updateColor('colorSumi', this.value)">
+                        <span class="color-value" id="colorSumi-value">#1a1a1a</span>
+                    </div>
+                </div>
+
+                <div class="color-group">
+                    <label>朱</label>
+                    <div class="color-picker-container">
+                        <input type="color" id="colorShu" value="#c73e3a" onchange="updateColor('colorShu', this.value)">
+                        <span class="color-value" id="colorShu-value">#c73e3a</span>
+                    </div>
+                </div>
+
+                <div class="color-group">
+                    <label>紙</label>
+                    <div class="color-picker-container">
+                        <input type="color" id="colorPaper" value="#f5f2eb" onchange="updateColor('colorPaper', this.value)">
+                        <span class="color-value" id="colorPaper-value">#f5f2eb</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="control-section">
+                <h3>操作</h3>
+                <div class="button-row">
+                    <button class="button" onclick="resetParameters()">戻す</button>
+                    <button class="button shu" onclick="saveCanvas('bokuryu', 'png')">保存</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="canvas-area">
+            <div id="canvas-container">
+                <div class="loading">筆を硯に浸している…</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ═══════════════════════════════════════════════════════════════════════
+        // 墨流 — INK FLOW PARAMETERS
+        // ═══════════════════════════════════════════════════════════════════════
+
+        let params = {
+            seed: 42,
+            particleCount: 8000,
+            flowSpeed: 1.5,
+            inkDensity: 0.025,
+            noiseScale: 0.004,
+            shuRatio: 8,
+            margin: 80,
+            colorSumi: '#1a1a1a',
+            colorShu: '#c73e3a',
+            colorPaper: '#f5f2eb'
+        };
+
+        let defaultParams = JSON.parse(JSON.stringify(params));
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // INK FLOW FIELD ALGORITHM
+        // ═══════════════════════════════════════════════════════════════════════
+
+        let particles = [];
+        let cols, rows;
+        let scl = 8;
+        let flowField;
+        let zoff = 0;
+
+        function setup() {
+            let canvas = createCanvas(1000, 1000);
+            canvas.parent('canvas-container');
+            pixelDensity(1);
+            
+            initializeSystem();
+            document.querySelector('.loading').style.display = 'none';
+        }
+
+        function initializeSystem() {
+            randomSeed(params.seed);
+            noiseSeed(params.seed);
+            
+            particles = [];
+            cols = floor((width - params.margin * 2) / scl);
+            rows = floor((height - params.margin * 2) / scl);
+            flowField = new Array(cols * rows);
+            
+            // Initialize particles within the margin-bounded area
+            for (let i = 0; i < params.particleCount; i++) {
+                let x = random(params.margin, width - params.margin);
+                let y = random(params.margin, height - params.margin);
+                let isShu = random(100) < params.shuRatio;
+                particles.push(new InkParticle(x, y, isShu));
+            }
+            
+            // Paper background
+            background(params.colorPaper);
+        }
+
+        function draw() {
+            // Subtle fade for layered effect
+            noStroke();
+            fill(red(color(params.colorPaper)), green(color(params.colorPaper)), blue(color(params.colorPaper)), 2);
+            rect(0, 0, width, height);
+            
+            // Generate flow field with multiple noise octaves
+            let yoff = 0;
+            for (let y = 0; y < rows; y++) {
+                let xoff = 0;
+                for (let x = 0; x < cols; x++) {
+                    let index = x + y * cols;
+                    
+                    // Layered noise for organic flow
+                    let angle = noise(xoff, yoff, zoff) * TWO_PI * 2;
+                    angle += noise(xoff * 2, yoff * 2, zoff * 0.5) * PI * 0.5;
+                    
+                    let v = p5.Vector.fromAngle(angle);
+                    v.setMag(params.flowSpeed);
+                    flowField[index] = v;
+                    
+                    xoff += params.inkDensity;
+                }
+                yoff += params.inkDensity;
+            }
+            zoff += 0.002;
+            
+            // Update and draw particles
+            for (let particle of particles) {
+                particle.follow(flowField);
+                particle.update();
+                particle.edges();
+                particle.show();
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // INK PARTICLE — 筆致の呼吸
+        // ═══════════════════════════════════════════════════════════════════════
+
+        class InkParticle {
+            constructor(x, y, isShu) {
+                this.pos = createVector(x, y);
+                this.vel = createVector(0, 0);
+                this.acc = createVector(0, 0);
+                this.maxSpeed = params.flowSpeed;
+                this.isShu = isShu;
+                this.age = 0;
+                this.maxAge = random(150, 400);
+                this.baseAlpha = random(30, 80);
+                
+                // Ink thickness varies like brush pressure
+                this.strokeWeight = random(0.5, 2.0);
+                
+                // Color with subtle variation
+                this.setColor();
+            }
+            
+            setColor() {
+                let c = this.isShu ? color(params.colorShu) : color(params.colorSumi);
+                // Add subtle variation to ink tone
+                let variation = random(-15, 15);
+                this.col = color(
+                    constrain(red(c) + variation, 0, 255),
+                    constrain(green(c) + variation * 0.5, 0, 255),
+                    constrain(blue(c) + variation * 0.5, 0, 255)
+                );
+            }
+            
+            follow(vectors) {
+                let x = floor((this.pos.x - params.margin) / scl);
+                let y = floor((this.pos.y - params.margin) / scl);
+                let index = x + y * cols;
+                index = constrain(index, 0, vectors.length - 1);
+                let force = vectors[index];
+                if (force) {
+                    this.applyForce(force);
+                }
+            }
+            
+            applyForce(force) {
+                this.acc.add(force);
+            }
+            
+            update() {
+                this.vel.add(this.acc);
+                this.vel.limit(this.maxSpeed);
+                this.pos.add(this.vel);
+                this.acc.mult(0);
+                this.age++;
+            }
+            
+            edges() {
+                // Soft boundary with margin (間)
+                let margin = params.margin;
+                if (this.pos.x < margin || this.pos.x > width - margin ||
+                    this.pos.y < margin || this.pos.y > height - margin) {
+                    // Respawn within bounds
+                    this.pos.x = random(margin, width - margin);
+                    this.pos.y = random(margin, height - margin);
+                    this.vel.mult(0);
+                    this.age = 0;
+                    this.maxAge = random(150, 400);
+                }
+            }
+            
+            show() {
+                // Calculate alpha based on age (brush stroke breathing)
+                let lifeRatio = this.age / this.maxAge;
+                let alpha;
+                
+                if (lifeRatio < 0.1) {
+                    // Starting stroke — building up
+                    alpha = this.baseAlpha * (lifeRatio / 0.1);
+                } else if (lifeRatio > 0.7) {
+                    // Ending stroke — fading out
+                    let fadeRatio = (lifeRatio - 0.7) / 0.3;
+                    alpha = this.baseAlpha * (1 - fadeRatio);
+                } else {
+                    // Middle of stroke — full presence
+                    alpha = this.baseAlpha;
+                }
+                
+                // Speed affects opacity (faster = lighter, like brush lifting)
+                let speed = this.vel.mag();
+                alpha *= map(speed, 0, this.maxSpeed, 1.2, 0.6);
+                alpha = constrain(alpha, 5, 100);
+                
+                stroke(red(this.col), green(this.col), blue(this.col), alpha);
+                strokeWeight(this.strokeWeight * map(lifeRatio, 0, 1, 1.5, 0.3));
+                
+                // Draw as subtle point/trail
+                point(this.pos.x, this.pos.y);
+                
+                // Add subtle trail for movement
+                if (this.age > 2) {
+                    let prevX = this.pos.x - this.vel.x * 2;
+                    let prevY = this.pos.y - this.vel.y * 2;
+                    line(prevX, prevY, this.pos.x, this.pos.y);
+                }
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // UI CONTROLS
+        // ═══════════════════════════════════════════════════════════════════════
+
+        function updateParam(paramName, value) {
+            params[paramName] = parseFloat(value);
+            document.getElementById(paramName + '-value').textContent = value;
+            
+            // Immediate effect for some params
+            if (paramName === 'particleCount' || paramName === 'margin' || paramName === 'shuRatio') {
+                initializeSystem();
+            }
+        }
+
+        function updateColor(colorId, value) {
+            params[colorId] = value;
+            document.getElementById(colorId + '-value').textContent = value;
+            
+            if (colorId === 'colorPaper') {
+                background(value);
+            } else {
+                // Update particle colors
+                for (let p of particles) {
+                    if ((colorId === 'colorShu' && p.isShu) || (colorId === 'colorSumi' && !p.isShu)) {
+                        p.setColor();
+                    }
+                }
+            }
+        }
+
+        function updateSeedDisplay() {
+            document.getElementById('seed-input').value = params.seed;
+        }
+
+        function updateSeed() {
+            let input = document.getElementById('seed-input');
+            let newSeed = parseInt(input.value);
+            if (newSeed && newSeed > 0) {
+                params.seed = newSeed;
+                initializeSystem();
+            } else {
+                updateSeedDisplay();
+            }
+        }
+
+        function previousSeed() {
+            params.seed = Math.max(1, params.seed - 1);
+            updateSeedDisplay();
+            initializeSystem();
+        }
+
+        function nextSeed() {
+            params.seed = params.seed + 1;
+            updateSeedDisplay();
+            initializeSystem();
+        }
+
+        function randomSeedAndUpdate() {
+            params.seed = Math.floor(Math.random() * 999999) + 1;
+            updateSeedDisplay();
+            initializeSystem();
+        }
+
+        function resetParameters() {
+            params = JSON.parse(JSON.stringify(defaultParams));
+            
+            document.getElementById('particleCount').value = params.particleCount;
+            document.getElementById('particleCount-value').textContent = params.particleCount;
+            document.getElementById('flowSpeed').value = params.flowSpeed;
+            document.getElementById('flowSpeed-value').textContent = params.flowSpeed;
+            document.getElementById('inkDensity').value = params.inkDensity;
+            document.getElementById('inkDensity-value').textContent = params.inkDensity;
+            document.getElementById('noiseScale').value = params.noiseScale;
+            document.getElementById('noiseScale-value').textContent = params.noiseScale;
+            document.getElementById('shuRatio').value = params.shuRatio;
+            document.getElementById('shuRatio-value').textContent = params.shuRatio;
+            document.getElementById('margin').value = params.margin;
+            document.getElementById('margin-value').textContent = params.margin;
+            
+            document.getElementById('colorSumi').value = params.colorSumi;
+            document.getElementById('colorSumi-value').textContent = params.colorSumi;
+            document.getElementById('colorShu').value = params.colorShu;
+            document.getElementById('colorShu-value').textContent = params.colorShu;
+            document.getElementById('colorPaper').value = params.colorPaper;
+            document.getElementById('colorPaper-value').textContent = params.colorPaper;
+            
+            updateSeedDisplay();
+            initializeSystem();
+        }
+
+        window.addEventListener('load', function() {
+            updateSeedDisplay();
+        });
+    </script>
+</body>
+</html>
