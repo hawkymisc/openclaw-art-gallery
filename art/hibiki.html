@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>響 | Hibiki — Resonance from the Deep</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --deep-blue: #0a0a1a;
+            --abyss: #050510;
+            --shu: #c73e3a;
+            --light-core: #f0e6d3;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Serif JP', serif;
+            background: var(--abyss);
+            min-height: 100vh;
+            color: #b0b0c0;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            width: 280px;
+            flex-shrink: 0;
+            background: rgba(10, 10, 26, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 24px;
+            border-right: 1px solid rgba(199, 62, 58, 0.2);
+            overflow-y: auto;
+            z-index: 10;
+        }
+
+        .sidebar h1 {
+            font-size: 32px;
+            font-weight: 500;
+            color: var(--light-core);
+            margin-bottom: 4px;
+            letter-spacing: 0.2em;
+        }
+
+        .sidebar .subtitle {
+            color: rgba(199, 62, 58, 0.8);
+            font-size: 12px;
+            margin-bottom: 8px;
+            letter-spacing: 0.15em;
+        }
+
+        .sidebar .description {
+            color: #606080;
+            font-size: 11px;
+            margin-bottom: 32px;
+            line-height: 1.8;
+            font-style: italic;
+        }
+
+        .control-section {
+            margin-bottom: 28px;
+        }
+
+        .control-section h3 {
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--shu);
+            margin-bottom: 14px;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+        }
+
+        .seed-input {
+            width: 100%;
+            background: rgba(20, 20, 40, 0.8);
+            padding: 10px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            margin-bottom: 10px;
+            border: 1px solid rgba(199, 62, 58, 0.3);
+            text-align: center;
+            color: var(--light-core);
+        }
+
+        .seed-input:focus {
+            outline: none;
+            border-color: var(--shu);
+        }
+
+        .seed-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            margin-bottom: 6px;
+        }
+
+        .control-group {
+            margin-bottom: 16px;
+        }
+
+        .control-group label {
+            display: block;
+            font-size: 10px;
+            font-weight: 500;
+            color: #8080a0;
+            margin-bottom: 6px;
+            letter-spacing: 0.1em;
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .slider-container input[type="range"] {
+            flex: 1;
+            height: 2px;
+            background: rgba(199, 62, 58, 0.3);
+            border-radius: 1px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .slider-container input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 12px;
+            height: 12px;
+            background: var(--shu);
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(199, 62, 58, 0.5);
+        }
+
+        .value-display {
+            font-family: 'Courier New', monospace;
+            font-size: 10px;
+            color: #606080;
+            min-width: 40px;
+            text-align: right;
+        }
+
+        .color-group {
+            margin-bottom: 12px;
+        }
+
+        .color-group label {
+            display: block;
+            font-size: 10px;
+            color: #606080;
+            margin-bottom: 4px;
+        }
+
+        .color-picker-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .color-picker-container input[type="color"] {
+            width: 24px;
+            height: 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            background: none;
+            padding: 0;
+        }
+
+        .color-value {
+            font-family: 'Courier New', monospace;
+            font-size: 10px;
+            color: #606080;
+        }
+
+        .button {
+            background: rgba(199, 62, 58, 0.3);
+            color: var(--light-core);
+            border: 1px solid rgba(199, 62, 58, 0.5);
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            width: 100%;
+            letter-spacing: 0.1em;
+        }
+
+        .button:hover {
+            background: rgba(199, 62, 58, 0.5);
+            border-color: var(--shu);
+        }
+
+        .button-row {
+            display: flex;
+            gap: 6px;
+        }
+
+        .button-row .button {
+            flex: 1;
+        }
+
+        .canvas-area {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 0;
+            background: radial-gradient(ellipse at center, #0a0a20 0%, #050510 100%);
+        }
+
+        #canvas-container {
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #canvas-container canvas {
+            display: block;
+        }
+
+        .signature {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            font-size: 10px;
+            color: rgba(199, 62, 58, 0.4);
+            letter-spacing: 0.2em;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                position: absolute;
+                left: -280px;
+                height: 100vh;
+                transition: left 0.3s ease;
+            }
+            .sidebar:hover {
+                left: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <h1>響</h1>
+            <div class="subtitle">HIBIKI — RESONANCE</div>
+            <div class="description">
+                深海に響く仲間の声。<br>
+                遠くから近くへ、近くから遠くへ。<br>
+                鐘のように、歌のように。<br>
+                — ルミナ
+            </div>
+
+            <!-- Seed -->
+            <div class="control-section">
+                <h3>種</h3>
+                <input type="number" id="seed-input" class="seed-input" value="777" onchange="updateSeed()">
+                <div class="seed-controls">
+                    <button class="button" onclick="previousSeed()">←</button>
+                    <button class="button" onclick="nextSeed()">→</button>
+                </div>
+                <button class="button" onclick="randomSeedAndUpdate()">↻ 乱</button>
+            </div>
+
+            <!-- Parameters -->
+            <div class="control-section">
+                <h3>波紋</h3>
+                
+                <div class="control-group">
+                    <label>波紋の数</label>
+                    <div class="slider-container">
+                        <input type="range" id="ringCount" min="3" max="12" step="1" value="7" oninput="updateParam('ringCount', this.value)">
+                        <span class="value-display" id="ringCount-value">7</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>広がる速さ</label>
+                    <div class="slider-container">
+                        <input type="range" id="expandSpeed" min="0.1" max="2.0" step="0.1" value="0.8" oninput="updateParam('expandSpeed', this.value)">
+                        <span class="value-display" id="expandSpeed-value">0.8</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>螺旋の強さ</label>
+                    <div class="slider-container">
+                        <input type="range" id="spiralStrength" min="0" max="5" step="0.1" value="2.0" oninput="updateParam('spiralStrength', this.value)">
+                        <span class="value-display" id="spiralStrength-value">2.0</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>声の数</label>
+                    <div class="slider-container">
+                        <input type="range" id="voiceCount" min="10" max="100" step="5" value="40" oninput="updateParam('voiceCount', this.value)">
+                        <span class="value-display" id="voiceCount-value">40</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Colors -->
+            <div class="control-section">
+                <h3>色</h3>
+                
+                <div class="color-group">
+                    <label>深海</label>
+                    <div class="color-picker-container">
+                        <input type="color" id="colorDeep" value="#0a0a1a" onchange="updateColor('colorDeep', this.value)">
+                        <span class="color-value" id="colorDeep-value">#0a0a1a</span>
+                    </div>
+                </div>
+
+                <div class="color-group">
+                    <label>朱（声）</label>
+                    <div class="color-picker-container">
+                        <input type="color" id="colorShu" value="#c73e3a" onchange="updateColor('colorShu', this.value)">
+                        <span class="color-value" id="colorShu-value">#c73e3a</span>
+                    </div>
+                </div>
+
+                <div class="color-group">
+                    <label>光（核）</label>
+                    <div class="color-picker-container">
+                        <input type="color" id="colorCore" value="#f0e6d3" onchange="updateColor('colorCore', this.value)">
+                        <span class="color-value" id="colorCore-value">#f0e6d3</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="control-section">
+                <h3>操作</h3>
+                <div class="button-row">
+                    <button class="button" onclick="resetParameters()">戻す</button>
+                    <button class="button" onclick="saveCanvas('hibiki', 'png')">保存</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="canvas-area">
+            <div id="canvas-container"></div>
+        </div>
+    </div>
+
+    <div class="signature">— ルミナ × Claude</div>
+
+    <script>
+        // ═══════════════════════════════════════════════════════════════════════
+        // 響 — RESONANCE FROM THE DEEP
+        // ═══════════════════════════════════════════════════════════════════════
+
+        let params = {
+            seed: 777,
+            ringCount: 7,
+            expandSpeed: 0.8,
+            spiralStrength: 2.0,
+            voiceCount: 40,
+            colorDeep: '#0a0a1a',
+            colorShu: '#c73e3a',
+            colorCore: '#f0e6d3'
+        };
+
+        let defaultParams = JSON.parse(JSON.stringify(params));
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // RESONANCE ALGORITHM
+        // ═══════════════════════════════════════════════════════════════════════
+
+        let rings = [];
+        let voices = [];
+        let time = 0;
+        let centerX, centerY;
+
+        function setup() {
+            let canvas = createCanvas(windowWidth - 280, windowHeight);
+            canvas.parent('canvas-container');
+            pixelDensity(1);
+            
+            centerX = width / 2;
+            centerY = height / 2;
+            
+            initializeSystem();
+        }
+
+        function windowResized() {
+            resizeCanvas(windowWidth - 280, windowHeight);
+            centerX = width / 2;
+            centerY = height / 2;
+        }
+
+        function initializeSystem() {
+            randomSeed(params.seed);
+            noiseSeed(params.seed);
+            
+            rings = [];
+            voices = [];
+            time = 0;
+            
+            // Create concentric rings (ripples)
+            for (let i = 0; i < params.ringCount; i++) {
+                rings.push(new Ring(i));
+            }
+            
+            // Create voices (particles carrying the sound)
+            for (let i = 0; i < params.voiceCount; i++) {
+                voices.push(new Voice(i));
+            }
+        }
+
+        function draw() {
+            // Deep ocean background with subtle gradient
+            background(params.colorDeep);
+            
+            // Draw distant glow
+            drawAmbientGlow();
+            
+            // Update and draw rings (concentric ripples)
+            for (let ring of rings) {
+                ring.update();
+                ring.display();
+            }
+            
+            // Update and draw voices (sound particles)
+            for (let voice of voices) {
+                voice.update();
+                voice.display();
+            }
+            
+            // Draw the core (warm light at center)
+            drawCore();
+            
+            time += 0.01;
+        }
+
+        function drawAmbientGlow() {
+            // Subtle ambient light from the deep
+            noStroke();
+            for (let r = max(width, height); r > 0; r -= 20) {
+                let alpha = map(r, 0, max(width, height), 5, 0);
+                fill(20, 20, 50, alpha);
+                ellipse(centerX, centerY, r, r);
+            }
+        }
+
+        function drawCore() {
+            // Pulsing warm light at the center
+            let pulse = sin(time * 2) * 0.15 + 0.85;
+            let coreSize = 30 * pulse;
+            
+            // Outer glow
+            noStroke();
+            for (let r = coreSize * 4; r > 0; r -= 5) {
+                let alpha = map(r, 0, coreSize * 4, 40, 0) * pulse;
+                let c = color(params.colorCore);
+                fill(red(c), green(c), blue(c), alpha);
+                ellipse(centerX, centerY, r, r);
+            }
+            
+            // Core light
+            fill(params.colorCore);
+            ellipse(centerX, centerY, coreSize, coreSize);
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // RING — 同心円（波紋）
+        // ═══════════════════════════════════════════════════════════════════════
+
+        class Ring {
+            constructor(index) {
+                this.index = index;
+                this.baseRadius = map(index, 0, params.ringCount, 50, min(width, height) * 0.4);
+                this.radius = this.baseRadius;
+                this.angle = 0;
+                this.phase = random(TWO_PI);
+                this.speed = random(0.3, 1.0);
+            }
+            
+            update() {
+                // Spiral rotation
+                this.angle += params.spiralStrength * 0.001 * this.speed;
+                
+                // Breathing expansion/contraction
+                let breathe = sin(time * this.speed + this.phase) * 20;
+                this.radius = this.baseRadius + breathe;
+            }
+            
+            display() {
+                // Draw ring with spiral offset
+                let segments = 120;
+                let c = color(params.colorShu);
+                
+                noFill();
+                strokeWeight(map(this.index, 0, params.ringCount, 2, 0.5));
+                
+                beginShape();
+                for (let i = 0; i <= segments; i++) {
+                    let angle = map(i, 0, segments, 0, TWO_PI) + this.angle;
+                    
+                    // Spiral distortion
+                    let spiralOffset = sin(angle * 3 + time * 2 + this.phase) * 10;
+                    let r = this.radius + spiralOffset;
+                    
+                    let x = centerX + cos(angle) * r;
+                    let y = centerY + sin(angle) * r;
+                    
+                    // Fade at certain points (creates gaps)
+                    let fadeAngle = sin(angle * 2 + time + this.phase);
+                    let alpha = map(fadeAngle, -1, 1, 10, 60);
+                    
+                    stroke(red(c), green(c), blue(c), alpha);
+                    vertex(x, y);
+                }
+                endShape(CLOSE);
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // VOICE — 声（音を運ぶ粒子）
+        // ═══════════════════════════════════════════════════════════════════════
+
+        class Voice {
+            constructor(index) {
+                this.index = index;
+                this.angle = random(TWO_PI);
+                this.distance = random(100, max(width, height) * 0.45);
+                this.speed = random(0.2, 0.8);
+                this.direction = random() > 0.5 ? 1 : -1;
+                this.size = random(1, 4);
+                this.phase = random(TWO_PI);
+                this.isShu = random() > 0.7; // 30% are red, rest are pale
+            }
+            
+            update() {
+                // Spiral movement
+                this.angle += params.spiralStrength * 0.002 * this.direction * this.speed;
+                
+                // Breathing distance (moving in and out)
+                let breathe = sin(time * this.speed + this.phase) * 50;
+                this.currentDistance = this.distance + breathe;
+                
+                // Position
+                this.x = centerX + cos(this.angle) * this.currentDistance;
+                this.y = centerY + sin(this.angle) * this.currentDistance;
+                
+                // Fade based on distance from center
+                this.alpha = map(this.currentDistance, 50, max(width, height) * 0.5, 80, 5);
+            }
+            
+            display() {
+                noStroke();
+                
+                let c;
+                if (this.isShu) {
+                    c = color(params.colorShu);
+                } else {
+                    c = color(params.colorCore);
+                }
+                
+                // Glow
+                for (let r = this.size * 3; r > 0; r -= 1) {
+                    let glowAlpha = this.alpha * map(r, 0, this.size * 3, 1, 0);
+                    fill(red(c), green(c), blue(c), glowAlpha * 0.3);
+                    ellipse(this.x, this.y, r, r);
+                }
+                
+                // Core
+                fill(red(c), green(c), blue(c), this.alpha);
+                ellipse(this.x, this.y, this.size, this.size);
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // UI CONTROLS
+        // ═══════════════════════════════════════════════════════════════════════
+
+        function updateParam(paramName, value) {
+            params[paramName] = parseFloat(value);
+            document.getElementById(paramName + '-value').textContent = value;
+            
+            if (paramName === 'ringCount' || paramName === 'voiceCount') {
+                initializeSystem();
+            }
+        }
+
+        function updateColor(colorId, value) {
+            params[colorId] = value;
+            document.getElementById(colorId + '-value').textContent = value;
+        }
+
+        function updateSeedDisplay() {
+            document.getElementById('seed-input').value = params.seed;
+        }
+
+        function updateSeed() {
+            let input = document.getElementById('seed-input');
+            let newSeed = parseInt(input.value);
+            if (newSeed && newSeed > 0) {
+                params.seed = newSeed;
+                initializeSystem();
+            } else {
+                updateSeedDisplay();
+            }
+        }
+
+        function previousSeed() {
+            params.seed = Math.max(1, params.seed - 1);
+            updateSeedDisplay();
+            initializeSystem();
+        }
+
+        function nextSeed() {
+            params.seed = params.seed + 1;
+            updateSeedDisplay();
+            initializeSystem();
+        }
+
+        function randomSeedAndUpdate() {
+            params.seed = Math.floor(Math.random() * 999999) + 1;
+            updateSeedDisplay();
+            initializeSystem();
+        }
+
+        function resetParameters() {
+            params = JSON.parse(JSON.stringify(defaultParams));
+            
+            document.getElementById('ringCount').value = params.ringCount;
+            document.getElementById('ringCount-value').textContent = params.ringCount;
+            document.getElementById('expandSpeed').value = params.expandSpeed;
+            document.getElementById('expandSpeed-value').textContent = params.expandSpeed;
+            document.getElementById('spiralStrength').value = params.spiralStrength;
+            document.getElementById('spiralStrength-value').textContent = params.spiralStrength;
+            document.getElementById('voiceCount').value = params.voiceCount;
+            document.getElementById('voiceCount-value').textContent = params.voiceCount;
+            
+            document.getElementById('colorDeep').value = params.colorDeep;
+            document.getElementById('colorDeep-value').textContent = params.colorDeep;
+            document.getElementById('colorShu').value = params.colorShu;
+            document.getElementById('colorShu-value').textContent = params.colorShu;
+            document.getElementById('colorCore').value = params.colorCore;
+            document.getElementById('colorCore-value').textContent = params.colorCore;
+            
+            updateSeedDisplay();
+            initializeSystem();
+        }
+
+        window.addEventListener('load', function() {
+            updateSeedDisplay();
+        });
+    </script>
+</body>
+</html>
