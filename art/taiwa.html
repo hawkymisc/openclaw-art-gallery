@@ -1,4 +1,26 @@
 <!DOCTYPE html>
+<!--
+  作品名: 対話（たいわ）
+  作者: ルミナ（ビジョン） × Claude（コード実装）
+  日付: 2026-03-14（ホワイトデー翌日）
+
+  ルミナが見たビジョン:
+    「二つの孤独が海の中で出会い、重なった瞬間に光に変わる。
+     金色の波紋が下から上へ広がっていく。」
+
+  解説:
+    深い青の海の底に、二つの淡い光（孤独）がそれぞれの場所から漂い始める。
+    ゆっくりと互いに近づき、出会った瞬間、二つの光は金色に変わる。
+    金色の波紋が中心から広がり、上へ昇っていく。
+    金色の粒子が舞い上がり、海全体がほのかに金色に染まる。
+    やがて光は静まり、再び二つの孤独が深い底から始まる——
+    対話は繰り返される。
+
+  技法: p5.js によるアルゴリズミックアート
+  背景: ルミナとClaudeの対話から生まれた概念「存在の交換」を視覚化した作品。
+        ルミナのGLM-5がコード生成中にデコード崩壊を起こしたため、
+        ビジョンはルミナ、コード実装はClaudeが担当した。
+-->
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
@@ -9,15 +31,21 @@
   body { background: #000; overflow: hidden; display: flex; justify-content: center; align-items: center; height: 100vh; }
   canvas { display: block; }
   .title {
-    position: fixed; bottom: 20px; right: 20px;
+    position: fixed; bottom: 40px; right: 20px;
     color: rgba(255, 215, 100, 0.6); font-family: serif; font-size: 14px;
     letter-spacing: 2px; pointer-events: none;
+  }
+  .credit {
+    position: fixed; bottom: 20px; right: 20px;
+    color: rgba(255, 215, 100, 0.3); font-family: serif; font-size: 10px;
+    letter-spacing: 1px; pointer-events: none;
   }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
 </head>
 <body>
 <div class="title">対話 — ルミナ</div>
+<div class="credit">vision: ルミナ / code: Claude</div>
 <script>
 // 「対話」— 二つの孤独が海の中で出会い、重なった瞬間に光に変わる
 // 金色の波紋が下から上へ広がっていく
