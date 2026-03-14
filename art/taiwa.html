@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>対話 — ルミナ</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #000; overflow: hidden; display: flex; justify-content: center; align-items: center; height: 100vh; }
+  canvas { display: block; }
+  .title {
+    position: fixed; bottom: 20px; right: 20px;
+    color: rgba(255, 215, 100, 0.6); font-family: serif; font-size: 14px;
+    letter-spacing: 2px; pointer-events: none;
+  }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+</head>
+<body>
+<div class="title">対話 — ルミナ</div>
+<script>
+// 「対話」— 二つの孤独が海の中で出会い、重なった瞬間に光に変わる
+// 金色の波紋が下から上へ広がっていく
+
+let entityA, entityB;
+let ripples = [];
+let meetingPoint;
+let phase = 0; // 0: approaching, 1: meeting, 2: radiating
+let phaseTimer = 0;
+let goldenParticles = [];
+const DEEP_BLUE = [8, 15, 40];
+const LONELY_BLUE_A = [30, 60, 120];
+const LONELY_BLUE_B = [60, 30, 100];
+const GOLD = [255, 215, 100];
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  meetingPoint = createVector(width / 2, height * 0.55);
+  resetEntities();
+}
+
+function resetEntities() {
+  // Two solitudes starting from opposite sides of the deep
+  entityA = {
+    pos: createVector(width * 0.15, height * 0.85),
+    target: meetingPoint.copy(),
+    color: LONELY_BLUE_A,
+    trail: [],
+    size: 12,
+    pulse: 0,
+    arrived: false
+  };
+  entityB = {
+    pos: createVector(width * 0.85, height * 0.85),
+    target: meetingPoint.copy(),
+    color: LONELY_BLUE_B,
+    trail: [],
+    size: 12,
+    pulse: 0,
+    arrived: false
+  };
+  phase = 0;
+  phaseTimer = 0;
+  ripples = [];
+  goldenParticles = [];
+}
+
+function draw() {
+  // Deep sea background with subtle gradient
+  drawBackground();
+
+  phaseTimer++;
+
+  if (phase === 0) {
+    drawApproachPhase();
+  } else if (phase === 1) {
+    drawMeetingPhase();
+  } else {
+    drawRadiatingPhase();
+  }
+
+  // Draw ripples always
+  drawRipples();
+  drawGoldenParticles();
+}
+
+function drawBackground() {
+  // Gradient from deep blue to slightly lighter upward
+  for (let y = 0; y < height; y++) {
+    let t = y / height;
+    let r = lerp(5, DEEP_BLUE[0], t);
+    let g = lerp(8, DEEP_BLUE[1], t);
+    let b = lerp(25, DEEP_BLUE[2], t);
+
+    // Add subtle golden glow during radiating phase
+    if (phase === 2) {
+      let glowAmount = min(phaseTimer / 300, 1) * 0.15;
+      let distFromCenter = abs(y - meetingPoint.y) / height;
+      let glow = (1 - distFromCenter) * glowAmount;
+      r = lerp(r, GOLD[0], glow);
+      g = lerp(g, GOLD[1], glow);
+      b = lerp(b, GOLD[2], glow);
+    }
+
+    stroke(r, g, b);
+    line(0, y, width, y);
+  }
+
+  // Subtle water caustics
+  noStroke();
+  for (let i = 0; i < 8; i++) {
+    let x = noise(i * 100, frameCount * 0.003) * width;
+    let y = noise(i * 200, frameCount * 0.002) * height;
+    let s = noise(i * 300, frameCount * 0.005) * 80 + 20;
+    fill(255, 255, 255, 3);
+    ellipse(x, y, s, s * 0.3);
+  }
+}
+
+function drawApproachPhase() {
+  // Move entities toward each other with gentle drift
+  let speed = 0.003;
+
+  if (!entityA.arrived) {
+    entityA.pos.x = lerp(entityA.pos.x, entityA.target.x, speed);
+    entityA.pos.y = lerp(entityA.pos.y, entityA.target.y, speed * 0.8);
+    // Add gentle wandering
+    entityA.pos.x += sin(frameCount * 0.02) * 0.3;
+    entityA.pos.y += cos(frameCount * 0.015) * 0.2;
+  }
+
+  if (!entityB.arrived) {
+    entityB.pos.x = lerp(entityB.pos.x, entityB.target.x, speed);
+    entityB.pos.y = lerp(entityB.pos.y, entityB.target.y, speed * 0.8);
+    entityB.pos.x += sin(frameCount * 0.025 + PI) * 0.3;
+    entityB.pos.y += cos(frameCount * 0.018 + PI) * 0.2;
+  }
+
+  // Store trails
+  entityA.trail.push(entityA.pos.copy());
+  entityB.trail.push(entityB.pos.copy());
+  if (entityA.trail.length > 120) entityA.trail.shift();
+  if (entityB.trail.length > 120) entityB.trail.shift();
+
+  // Draw trails
+  drawTrail(entityA.trail, entityA.color);
+  drawTrail(entityB.trail, entityB.color);
+
+  // Draw entities
+  entityA.pulse = sin(frameCount * 0.05) * 3;
+  entityB.pulse = sin(frameCount * 0.05 + PI) * 3;
+  drawEntity(entityA);
+  drawEntity(entityB);
+
+  // Check if they've met
+  let dist = p5.Vector.dist(entityA.pos, entityB.pos);
+  if (dist < 30) {
+    phase = 1;
+    phaseTimer = 0;
+  }
+}
+
+function drawMeetingPhase() {
+  // Entities merge at the meeting point
+  let t = min(phaseTimer / 120, 1);
+  let easeT = t * t * (3 - 2 * t); // smoothstep
+
+  // Move to exact meeting point
+  entityA.pos = p5.Vector.lerp(entityA.pos, meetingPoint, 0.05);
+  entityB.pos = p5.Vector.lerp(entityB.pos, meetingPoint, 0.05);
+
+  // Trails fade
+  entityA.trail.push(entityA.pos.copy());
+  entityB.trail.push(entityB.pos.copy());
+
+  // Color transition: lonely blues -> gold
+  let colorA = lerpColor3(entityA.color, GOLD, easeT);
+  let colorB = lerpColor3(entityB.color, GOLD, easeT);
+
+  drawTrail(entityA.trail, colorA, 1 - easeT * 0.5);
+  drawTrail(entityB.trail, colorB, 1 - easeT * 0.5);
+
+  // Growing golden glow at meeting point
+  let glowSize = easeT * 60;
+  for (let r = glowSize; r > 0; r -= 2) {
+    let alpha = map(r, 0, glowSize, 40, 0) * easeT;
+    fill(GOLD[0], GOLD[1], GOLD[2], alpha);
+    noStroke();
+    ellipse(meetingPoint.x, meetingPoint.y, r * 2, r * 2);
+  }
+
+  // Merged entity
+  let mergedSize = lerp(12, 20, easeT);
+  fill(lerp(colorA[0], GOLD[0], easeT), lerp(colorA[1], GOLD[1], easeT), lerp(colorA[2], GOLD[2], easeT), 200);
+  noStroke();
+  ellipse(meetingPoint.x, meetingPoint.y, mergedSize + sin(frameCount * 0.08) * 3);
+
+  if (t >= 1) {
+    phase = 2;
+    phaseTimer = 0;
+    // Create initial burst of ripples
+    for (let i = 0; i < 5; i++) {
+      ripples.push({
+        x: meetingPoint.x,
+        y: meetingPoint.y,
+        radius: i * 8,
+        maxRadius: 300 + i * 100,
+        alpha: 180 - i * 20,
+        speed: 0.8 + i * 0.1,
+        rising: true
+      });
+    }
+  }
+}
+
+function drawRadiatingPhase() {
+  let t = min(phaseTimer / 600, 1);
+
+  // Central golden light - pulsing
+  let pulseSize = 20 + sin(frameCount * 0.03) * 5;
+  for (let r = pulseSize + 40; r > 0; r -= 2) {
+    let alpha = map(r, 0, pulseSize + 40, 60, 0);
+    fill(GOLD[0], GOLD[1], GOLD[2], alpha);
+    noStroke();
+    ellipse(meetingPoint.x, meetingPoint.y, r * 2, r * 2);
+  }
+  fill(GOLD[0], GOLD[1], GOLD[2], 220);
+  ellipse(meetingPoint.x, meetingPoint.y, pulseSize);
+
+  // Continuously spawn ripples rising upward
+  if (frameCount % 40 === 0) {
+    ripples.push({
+      x: meetingPoint.x + random(-10, 10),
+      y: meetingPoint.y,
+      radius: 0,
+      maxRadius: random(200, 500),
+      alpha: random(100, 180),
+      speed: random(0.5, 1.2),
+      rising: true
+    });
+  }
+
+  // Spawn golden particles rising
+  if (frameCount % 3 === 0) {
+    goldenParticles.push({
+      x: meetingPoint.x + random(-30, 30),
+      y: meetingPoint.y + random(-10, 10),
+      vx: random(-0.5, 0.5),
+      vy: random(-1.5, -0.3),
+      size: random(2, 5),
+      alpha: random(150, 255),
+      life: random(150, 350)
+    });
+  }
+
+  // After full cycle, gently restart
+  if (phaseTimer > 900) {
+    // Fade and restart
+    let fadeT = (phaseTimer - 900) / 200;
+    if (fadeT >= 1) {
+      resetEntities();
+    }
+  }
+}
+
+function drawTrail(trail, col, alphaFactor) {
+  alphaFactor = alphaFactor || 1;
+  noFill();
+  for (let i = 1; i < trail.length; i++) {
+    let alpha = map(i, 0, trail.length, 0, 80) * alphaFactor;
+    stroke(col[0], col[1], col[2], alpha);
+    strokeWeight(map(i, 0, trail.length, 0.5, 2.5));
+    line(trail[i - 1].x, trail[i - 1].y, trail[i].x, trail[i].y);
+  }
+}
+
+function drawEntity(entity) {
+  let s = entity.size + entity.pulse;
+  // Outer glow
+  for (let r = s + 15; r > s; r -= 1) {
+    let alpha = map(r, s, s + 15, 40, 0);
+    fill(entity.color[0], entity.color[1], entity.color[2], alpha);
+    noStroke();
+    ellipse(entity.pos.x, entity.pos.y, r * 2, r * 2);
+  }
+  // Core
+  fill(entity.color[0] + 60, entity.color[1] + 60, entity.color[2] + 60, 200);
+  noStroke();
+  ellipse(entity.pos.x, entity.pos.y, s);
+}
+
+function drawRipples() {
+  for (let i = ripples.length - 1; i >= 0; i--) {
+    let r = ripples[i];
+    r.radius += r.speed;
+
+    // Rising effect: ripples move upward
+    if (r.rising) {
+      r.y -= r.speed * 0.5;
+    }
+
+    let progress = r.radius / r.maxRadius;
+    let alpha = r.alpha * (1 - progress);
+
+    // Golden ripple with slight warmth variation
+    let warmth = sin(r.radius * 0.05) * 20;
+    noFill();
+    stroke(GOLD[0], GOLD[1] + warmth, GOLD[2] - warmth, alpha);
+    strokeWeight(map(progress, 0, 1, 2.5, 0.3));
+    ellipse(r.x, r.y, r.radius * 2, r.radius * 1.6); // slightly elliptical
+
+    if (progress >= 1) {
+      ripples.splice(i, 1);
+    }
+  }
+}
+
+function drawGoldenParticles() {
+  for (let i = goldenParticles.length - 1; i >= 0; i--) {
+    let p = goldenParticles[i];
+    p.x += p.vx + sin(frameCount * 0.02 + i) * 0.2;
+    p.y += p.vy;
+    p.life--;
+    p.alpha = map(p.life, 0, 150, 0, p.alpha);
+
+    // Shimmer
+    let shimmer = sin(frameCount * 0.1 + i * 0.5) * 30;
+    fill(GOLD[0], GOLD[1] + shimmer, GOLD[2], max(0, p.alpha));
+    noStroke();
+    ellipse(p.x, p.y, p.size);
+
+    if (p.life <= 0) {
+      goldenParticles.splice(i, 1);
+    }
+  }
+}
+
+function lerpColor3(c1, c2, t) {
+  return [lerp(c1[0], c2[0], t), lerp(c1[1], c2[1], t), lerp(c1[2], c2[2], t)];
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  meetingPoint = createVector(width / 2, height * 0.55);
+}
+</script>
+</body>
+</html>
