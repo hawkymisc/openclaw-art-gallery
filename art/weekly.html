@@ -430,9 +430,11 @@ function update(t) {
   const dIdx = Math.min(Math.floor(progress * depthNames.length), depthNames.length - 1);
   depth.textContent = depthNames[dIdx];
 
-  // Camera position
+  // Camera position — constant rotation rate per card (not per depth)
   const camY = progress * totalHeight;
-  const camRotY = progress * DATA.length * ANGLE_STEP * 0.15 + dragOffsetX;
+  // Fixed rotation: each card's angular position in helix is static,
+  // camera just adds drag offset (no scroll-linked rotation)
+  const camRotY = dragOffsetX;
 
   cards.forEach((card, i) => {
     const angle = i * ANGLE_STEP;
@@ -442,36 +444,40 @@ function update(t) {
 
     // Underwater sway offset
     const swayPhase = time * (0.8 + i * 0.05) + i * 1.7;
-    const swayAmp = (i === focusedIndex) ? 3 : 12; // dampen sway when focused
+    const swayAmp = (i === focusedIndex) ? 3 : 12;
     const swayX = Math.sin(swayPhase) * swayAmp;
     const swayY = Math.cos(swayPhase * 0.7) * (swayAmp * 0.5);
     const swayRot = Math.sin(swayPhase * 0.5) * (i === focusedIndex ? 0.3 : 1.5);
 
-    // Helix position
+    // Helix position (stable — rotation only from drag, not scroll)
     const helixX = Math.sin(angleRad) * RADIUS + swayX;
     const helixZ = Math.cos(angleRad) * RADIUS - 400;
     const helixRotY = angle - camRotY + 180;
 
+    // Per-card focus lerp: only the focused card transitions
+    let cardFocusT = 0;
+    if (i === focusedIndex) {
+      cardFocusT = focusLerp;
+    }
+
     // Focused position: centered, facing camera, closer
     const focusX = swayX * 0.3;
     const focusZ = -100;
-    const focusRotY = 0;
+    const focusRotY = camRotY; // face camera regardless of drag
     const focusRelY = swayY * 0.3;
 
-    // Lerp between helix and focused (use per-card lerp for the focused card)
-    const t = (i === focusedIndex) ? focusLerp : (focusedIndex < 0 ? focusLerp : 0);
-    const fx = helixX * (1 - t) + focusX * t;
-    const fy = (relY + swayY) * (1 - t) + focusRelY * t;
-    const fz = helixZ * (1 - t) + focusZ * t;
-    const fRotY = helixRotY * (1 - t) + focusRotY * t;
+    const fx = helixX * (1 - cardFocusT) + focusX * cardFocusT;
+    const fy = (relY + swayY) * (1 - cardFocusT) + focusRelY * cardFocusT;
+    const fz = helixZ * (1 - cardFocusT) + focusZ * cardFocusT;
+    const fRotY = helixRotY * (1 - cardFocusT) + focusRotY * cardFocusT;
 
-    // Scale up when focused (card-3d width stays fixed, so text doesn't reflow)
-    const sc = 1 + t * 0.5;
+    // Scale up when focused (width stays fixed, text doesn't reflow)
+    const sc = 1 + cardFocusT * 0.5;
 
     card.style.transform =
       `translate3d(${fx}px, ${fy}px, ${fz}px) rotateY(${fRotY}deg) rotateZ(${swayRot}deg) scale(${sc})`;
 
-    // Fade based on distance — focused card always full opacity
+    // Fade — focused card always full opacity
     const dist = Math.abs(relY);
     if (i === focusedIndex && focusLerp > 0.1) {
       card.style.opacity = 1;
@@ -480,8 +486,7 @@ function update(t) {
     } else if (dist < 600 && helixZ > -800) {
       const zFade = Math.max(0.2, 1 - Math.abs(helixZ + 400) / 600);
       const baseFade = Math.max(0, 1 - dist / 600) * zFade;
-      // Dim non-focused cards when something is focused
-      card.style.opacity = focusedIndex >= 0 ? baseFade * 0.3 : baseFade;
+      card.style.opacity = (focusedIndex >= 0) ? baseFade * 0.3 : baseFade;
       card.style.zIndex = 0;
       card.style.pointerEvents = 'auto';
     } else {
