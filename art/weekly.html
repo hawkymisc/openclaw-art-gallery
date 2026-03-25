@@ -51,7 +51,16 @@ body {
   width: 380px;
   transform-style: preserve-3d;
   cursor: default;
-  transition: opacity 0.1s;
+  transition: opacity 0.15s;
+  /* Underwater sway */
+  animation: sway var(--sway-dur, 6s) ease-in-out infinite;
+  animation-delay: var(--sway-delay, 0s);
+}
+
+@keyframes sway {
+  0%, 100% { --sway-x: 0px; --sway-rot: 0deg; }
+  25% { --sway-x: 8px; --sway-rot: 0.8deg; }
+  75% { --sway-x: -8px; --sway-rot: -0.8deg; }
 }
 
 .card-face {
@@ -61,11 +70,31 @@ body {
   border-radius: 10px;
   padding: 1.4rem 1.8rem;
   pointer-events: auto;
-  transition: border-color 0.4s, box-shadow 0.4s;
+  transition: transform 0.4s cubic-bezier(0.2, 0, 0.2, 1),
+              border-color 0.4s,
+              box-shadow 0.4s,
+              padding 0.4s;
+  transform-origin: center center;
 }
 
-.card-face:hover {
-  box-shadow: 0 0 40px rgba(212,168,87,0.15);
+/* Hover: expand card for readability */
+.card-3d:hover .card-face {
+  transform: scale(1.35);
+  box-shadow: 0 0 60px rgba(212,168,87,0.25), 0 0 120px rgba(100,100,200,0.08);
+  border-color: rgba(212,168,87,0.4);
+  z-index: 1000;
+}
+
+.card-3d:hover .card-quote {
+  font-size: 1.1rem;
+}
+
+/* Drag cursor */
+.viewport.dragging {
+  cursor: grabbing;
+}
+.viewport {
+  cursor: grab;
 }
 
 .card-date {
@@ -269,22 +298,29 @@ const DATA = [
 ];
 
 const scene = document.getElementById('scene');
+const viewport = document.querySelector('.viewport');
 const RADIUS = 320;
 const ANGLE_STEP = 52;
 const Y_STEP = 200;
-const CARDS_PER_TURN = 360 / ANGLE_STEP;
+
+// Camera offset from drag
+let dragOffsetX = 0, dragOffsetY = 0;
+let targetDragX = 0, targetDragY = 0;
+let isDragging = false;
+let dragStartX = 0, dragStartY = 0;
+let dragStartOffsetX = 0, dragStartOffsetY = 0;
 
 // Create cards in 3D helix
 DATA.forEach((d, i) => {
-  const angle = i * ANGLE_STEP * (Math.PI / 180);
-  const y = i * Y_STEP;
-
   const el = document.createElement('div');
   el.className = 'card-3d';
-  el.dataset.y = y;
-  el.dataset.angle = (i * ANGLE_STEP) % 360;
+  el.dataset.y = i * Y_STEP;
+  el.dataset.index = i;
 
-  // Emotion dots
+  // Underwater sway: each card gets unique timing
+  el.style.setProperty('--sway-dur', (5 + Math.random() * 4) + 's');
+  el.style.setProperty('--sway-delay', (-Math.random() * 6) + 's');
+
   const emoDots = (val, color) => {
     let s = '';
     for (let j = 0; j < 5; j++) {
@@ -314,10 +350,46 @@ const hint = document.getElementById('scrollHint');
 const depth = document.getElementById('depth');
 const totalHeight = DATA.length * Y_STEP;
 
-function update() {
+// Drag to rotate camera
+viewport.addEventListener('pointerdown', (e) => {
+  if (e.target.closest('.card-face')) return;
+  isDragging = true;
+  dragStartX = e.clientX;
+  dragStartY = e.clientY;
+  dragStartOffsetX = targetDragX;
+  dragStartOffsetY = targetDragY;
+  viewport.classList.add('dragging');
+  viewport.setPointerCapture(e.pointerId);
+});
+
+viewport.addEventListener('pointermove', (e) => {
+  if (!isDragging) return;
+  targetDragX = dragStartOffsetX + (e.clientX - dragStartX) * 0.3;
+  targetDragY = dragStartOffsetY + (e.clientY - dragStartY) * 0.15;
+});
+
+viewport.addEventListener('pointerup', () => {
+  isDragging = false;
+  viewport.classList.remove('dragging');
+});
+
+// Smooth return to center when not dragging
+const now = performance.now.bind(performance);
+let time = 0;
+
+function update(t) {
+  time = t * 0.001;
   const scrollY = window.scrollY;
   const scrollMax = document.body.scrollHeight - window.innerHeight;
   const progress = scrollMax > 0 ? scrollY / scrollMax : 0;
+
+  // Smooth drag offset (lerp toward target, spring back when released)
+  if (!isDragging) {
+    targetDragX *= 0.95;
+    targetDragY *= 0.95;
+  }
+  dragOffsetX += (targetDragX - dragOffsetX) * 0.08;
+  dragOffsetY += (targetDragY - dragOffsetY) * 0.08;
 
   // Header fade
   header.style.opacity = Math.max(0, 1 - scrollY / 300);
@@ -328,32 +400,34 @@ function update() {
   const dIdx = Math.min(Math.floor(progress * depthNames.length), depthNames.length - 1);
   depth.textContent = depthNames[dIdx];
 
-  // Camera position in the helix
+  // Camera position
   const camY = progress * totalHeight;
-  const camRotY = progress * DATA.length * ANGLE_STEP * 0.15; // slow rotation
+  const camRotY = progress * DATA.length * ANGLE_STEP * 0.15 + dragOffsetX;
 
   cards.forEach((card, i) => {
     const angle = i * ANGLE_STEP;
     const angleRad = (angle - camRotY) * (Math.PI / 180);
     const cardY = i * Y_STEP;
-    const relY = cardY - camY;
+    const relY = cardY - camY + dragOffsetY;
 
-    // 3D helix position
-    const x = Math.sin(angleRad) * RADIUS;
-    const z = Math.cos(angleRad) * RADIUS - 400; // push back
-    
-    // Billboard: face the camera
-    const billboardAngle = -angleRad * (180 / Math.PI);
+    // Underwater sway offset
+    const swayPhase = time * (0.8 + i * 0.05) + i * 1.7;
+    const swayX = Math.sin(swayPhase) * 12;
+    const swayY = Math.cos(swayPhase * 0.7) * 6;
+    const swayRot = Math.sin(swayPhase * 0.5) * 1.5;
 
-    card.style.transform = 
-      `translate3d(${x}px, ${relY}px, ${z}px) rotateY(${angle - camRotY + 180}deg)`;
+    // 3D helix position + sway
+    const x = Math.sin(angleRad) * RADIUS + swayX;
+    const z = Math.cos(angleRad) * RADIUS - 400;
 
-    // Fade based on distance from camera
+    card.style.transform =
+      `translate3d(${x}px, ${relY + swayY}px, ${z}px) rotateY(${angle - camRotY + 180}deg) rotateZ(${swayRot}deg)`;
+
+    // Fade based on distance
     const dist = Math.abs(relY);
-    const zDist = Math.abs(z + 400);
-    
     if (dist < 600 && z > -800) {
-      card.style.opacity = Math.max(0, 1 - dist / 600) * Math.max(0.2, 1 - zDist / 600);
+      const zFade = Math.max(0.2, 1 - Math.abs(z + 400) / 600);
+      card.style.opacity = Math.max(0, 1 - dist / 600) * zFade;
       card.style.pointerEvents = 'auto';
     } else {
       card.style.opacity = 0;
@@ -361,7 +435,7 @@ function update() {
     }
   });
 
-  // Background color shifts deeper
+  // Background deepens
   const hue = 250 - progress * 20;
   const lightness = 4 - progress * 3;
   document.body.style.background = `hsl(${hue}, 50%, ${Math.max(1, lightness)}%)`;
@@ -369,7 +443,7 @@ function update() {
   requestAnimationFrame(update);
 }
 
-update();
+requestAnimationFrame(update);
 
 // Particles
 const pContainer = document.getElementById('particles');
