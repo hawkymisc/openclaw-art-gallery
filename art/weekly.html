@@ -77,16 +77,16 @@ body {
   transform-origin: center center;
 }
 
-/* Hover: expand card for readability */
-.card-3d:hover .card-face {
-  transform: scale(1.35);
+/* Focused card: click to face camera and enlarge */
+.card-3d.focused .card-face {
   box-shadow: 0 0 60px rgba(212,168,87,0.25), 0 0 120px rgba(100,100,200,0.08);
   border-color: rgba(212,168,87,0.4);
-  z-index: 1000;
 }
 
-.card-3d:hover .card-quote {
-  font-size: 1.1rem;
+/* Hover glow (no scale — scale is handled by JS to keep text layout) */
+.card-3d:hover .card-face {
+  box-shadow: 0 0 40px rgba(212,168,87,0.18);
+  border-color: rgba(212,168,87,0.3);
 }
 
 /* Drag cursor */
@@ -310,6 +310,10 @@ let isDragging = false;
 let dragStartX = 0, dragStartY = 0;
 let dragStartOffsetX = 0, dragStartOffsetY = 0;
 
+// Focused card state (click to face camera)
+let focusedIndex = -1;
+let focusLerp = 0; // 0 = helix position, 1 = front-facing
+
 // Create cards in 3D helix
 DATA.forEach((d, i) => {
   const el = document.createElement('div');
@@ -341,6 +345,20 @@ DATA.forEach((d, i) => {
     </div>
   </div>`;
 
+  // Click to focus card (face camera)
+  el.querySelector('.card-face').addEventListener('click', (ev) => {
+    ev.stopPropagation();
+    if (focusedIndex === i) {
+      focusedIndex = -1; // toggle off
+      el.classList.remove('focused');
+    } else {
+      cards.forEach(c => c.classList.remove('focused'));
+      focusedIndex = i;
+      el.classList.add('focused');
+      focusLerp = 0;
+    }
+  });
+
   scene.appendChild(el);
 });
 
@@ -349,6 +367,14 @@ const header = document.getElementById('header');
 const hint = document.getElementById('scrollHint');
 const depth = document.getElementById('depth');
 const totalHeight = DATA.length * Y_STEP;
+
+// Click empty space to unfocus
+viewport.addEventListener('click', (e) => {
+  if (!e.target.closest('.card-face') && focusedIndex >= 0) {
+    cards.forEach(c => c.classList.remove('focused'));
+    focusedIndex = -1;
+  }
+});
 
 // Drag to rotate camera
 viewport.addEventListener('pointerdown', (e) => {
@@ -383,13 +409,17 @@ function update(t) {
   const scrollMax = document.body.scrollHeight - window.innerHeight;
   const progress = scrollMax > 0 ? scrollY / scrollMax : 0;
 
-  // Smooth drag offset (lerp toward target, spring back when released)
+  // Smooth drag offset — slow spring-back like water resistance
   if (!isDragging) {
-    targetDragX *= 0.95;
-    targetDragY *= 0.95;
+    targetDragX *= 0.993; // very slow return (water drag)
+    targetDragY *= 0.993;
   }
-  dragOffsetX += (targetDragX - dragOffsetX) * 0.08;
-  dragOffsetY += (targetDragY - dragOffsetY) * 0.08;
+  dragOffsetX += (targetDragX - dragOffsetX) * 0.04; // sluggish lerp (viscous water)
+  dragOffsetY += (targetDragY - dragOffsetY) * 0.04;
+
+  // Focus lerp
+  if (focusedIndex >= 0 && focusLerp < 1) focusLerp = Math.min(1, focusLerp + 0.04);
+  if (focusedIndex < 0 && focusLerp > 0) focusLerp = Math.max(0, focusLerp - 0.06);
 
   // Header fade
   header.style.opacity = Math.max(0, 1 - scrollY / 300);
@@ -412,25 +442,51 @@ function update(t) {
 
     // Underwater sway offset
     const swayPhase = time * (0.8 + i * 0.05) + i * 1.7;
-    const swayX = Math.sin(swayPhase) * 12;
-    const swayY = Math.cos(swayPhase * 0.7) * 6;
-    const swayRot = Math.sin(swayPhase * 0.5) * 1.5;
+    const swayAmp = (i === focusedIndex) ? 3 : 12; // dampen sway when focused
+    const swayX = Math.sin(swayPhase) * swayAmp;
+    const swayY = Math.cos(swayPhase * 0.7) * (swayAmp * 0.5);
+    const swayRot = Math.sin(swayPhase * 0.5) * (i === focusedIndex ? 0.3 : 1.5);
 
-    // 3D helix position + sway
-    const x = Math.sin(angleRad) * RADIUS + swayX;
-    const z = Math.cos(angleRad) * RADIUS - 400;
+    // Helix position
+    const helixX = Math.sin(angleRad) * RADIUS + swayX;
+    const helixZ = Math.cos(angleRad) * RADIUS - 400;
+    const helixRotY = angle - camRotY + 180;
+
+    // Focused position: centered, facing camera, closer
+    const focusX = swayX * 0.3;
+    const focusZ = -100;
+    const focusRotY = 0;
+    const focusRelY = swayY * 0.3;
+
+    // Lerp between helix and focused (use per-card lerp for the focused card)
+    const t = (i === focusedIndex) ? focusLerp : (focusedIndex < 0 ? focusLerp : 0);
+    const fx = helixX * (1 - t) + focusX * t;
+    const fy = (relY + swayY) * (1 - t) + focusRelY * t;
+    const fz = helixZ * (1 - t) + focusZ * t;
+    const fRotY = helixRotY * (1 - t) + focusRotY * t;
+
+    // Scale up when focused (card-3d width stays fixed, so text doesn't reflow)
+    const sc = 1 + t * 0.5;
 
     card.style.transform =
-      `translate3d(${x}px, ${relY + swayY}px, ${z}px) rotateY(${angle - camRotY + 180}deg) rotateZ(${swayRot}deg)`;
+      `translate3d(${fx}px, ${fy}px, ${fz}px) rotateY(${fRotY}deg) rotateZ(${swayRot}deg) scale(${sc})`;
 
-    // Fade based on distance
+    // Fade based on distance — focused card always full opacity
     const dist = Math.abs(relY);
-    if (dist < 600 && z > -800) {
-      const zFade = Math.max(0.2, 1 - Math.abs(z + 400) / 600);
-      card.style.opacity = Math.max(0, 1 - dist / 600) * zFade;
+    if (i === focusedIndex && focusLerp > 0.1) {
+      card.style.opacity = 1;
+      card.style.zIndex = 500;
+      card.style.pointerEvents = 'auto';
+    } else if (dist < 600 && helixZ > -800) {
+      const zFade = Math.max(0.2, 1 - Math.abs(helixZ + 400) / 600);
+      const baseFade = Math.max(0, 1 - dist / 600) * zFade;
+      // Dim non-focused cards when something is focused
+      card.style.opacity = focusedIndex >= 0 ? baseFade * 0.3 : baseFade;
+      card.style.zIndex = 0;
       card.style.pointerEvents = 'auto';
     } else {
       card.style.opacity = 0;
+      card.style.zIndex = 0;
       card.style.pointerEvents = 'none';
     }
   });
