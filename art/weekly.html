@@ -903,12 +903,16 @@ function update(t) {
       cardFocusT = focusLerp; // apply lerp during return animation
     }
 
-    // Focused position: centered, facing camera, closer
-    // Shift focused card left to avoid panel overlap (panel is 380px on right)
-    const focusX = -200 + swayX * 0.3;
+    // Focused position: center card in available space (away from panel)
+    const isMobile = window.innerWidth <= 768;
+    const panelPx = isMobile ? 0 : 380;
+    // Projection factor at focusZ=-100 with perspective=900: 900/(900+100) = 0.9
+    // Screen offset needed = -panelPx/2; 3D offset = screenOffset / 0.9
+    const focusX = -(panelPx / 2) / 0.9 + swayX * 0.3;
     const focusZ = -100;
     const focusRotY = camRotY; // face camera regardless of drag
-    const focusRelY = swayY * 0.3;
+    // On mobile, shift card up so it doesn't overlap with bottom panel (50vh)
+    const focusRelY = isMobile ? -150 + swayY * 0.3 : swayY * 0.3;
 
     const fx = helixX * (1 - cardFocusT) + focusX * cardFocusT;
     const fy = (relY + swayY) * (1 - cardFocusT) + focusRelY * cardFocusT;
@@ -916,7 +920,7 @@ function update(t) {
     const fRotY = helixRotY * (1 - cardFocusT) + focusRotY * cardFocusT;
 
     // Scale up when focused (width stays fixed, text doesn't reflow)
-    const sc = 1 + cardFocusT * 0.5;
+    const sc = 1 + cardFocusT * 0.3;
 
     card.style.transform =
       `translate3d(${fx}px, ${fy}px, ${fz}px) rotateY(${fRotY}deg) rotateZ(${swayRot}deg) scale(${sc})`;
