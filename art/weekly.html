@@ -312,6 +312,7 @@ let dragStartOffsetX = 0, dragStartOffsetY = 0;
 
 // Focused card state (click to face camera)
 let focusedIndex = -1;
+let prevFocusedIndex = -1; // track previous card for return animation
 let focusLerp = 0; // 0 = helix position, 1 = front-facing
 
 // Create cards in 3D helix
@@ -349,6 +350,7 @@ DATA.forEach((d, i) => {
   el.querySelector('.card-face').addEventListener('click', (ev) => {
     ev.stopPropagation();
     if (focusedIndex === i) {
+      prevFocusedIndex = i; // remember which card to animate back
       focusedIndex = -1; // toggle off
       el.classList.remove('focused');
     } else {
@@ -372,6 +374,7 @@ const totalHeight = DATA.length * Y_STEP;
 viewport.addEventListener('click', (e) => {
   if (!e.target.closest('.card-face') && focusedIndex >= 0) {
     cards.forEach(c => c.classList.remove('focused'));
+    prevFocusedIndex = focusedIndex;
     focusedIndex = -1;
   }
 });
@@ -419,7 +422,10 @@ function update(t) {
 
   // Focus lerp
   if (focusedIndex >= 0 && focusLerp < 1) focusLerp = Math.min(1, focusLerp + 0.04);
-  if (focusedIndex < 0 && focusLerp > 0) focusLerp = Math.max(0, focusLerp - 0.06);
+  if (focusedIndex < 0 && focusLerp > 0) {
+    focusLerp = Math.max(0, focusLerp - 0.015); // slow graceful return
+    if (focusLerp === 0) prevFocusedIndex = -1; // animation complete
+  }
 
   // Header fade
   header.style.opacity = Math.max(0, 1 - scrollY / 300);
@@ -454,10 +460,12 @@ function update(t) {
     const helixZ = Math.cos(angleRad) * RADIUS - 400;
     const helixRotY = angle - camRotY + 180;
 
-    // Per-card focus lerp: only the focused card transitions
+    // Per-card focus lerp: focused or returning card transitions
     let cardFocusT = 0;
     if (i === focusedIndex) {
       cardFocusT = focusLerp;
+    } else if (i === prevFocusedIndex && focusedIndex < 0 && focusLerp > 0) {
+      cardFocusT = focusLerp; // apply lerp during return animation
     }
 
     // Focused position: centered, facing camera, closer
@@ -479,8 +487,9 @@ function update(t) {
 
     // Fade — focused card always full opacity
     const dist = Math.abs(relY);
-    if (i === focusedIndex && focusLerp > 0.1) {
-      card.style.opacity = 1;
+    const isReturning = (i === prevFocusedIndex && focusedIndex < 0 && focusLerp > 0);
+    if ((i === focusedIndex || isReturning) && focusLerp > 0.1) {
+      card.style.opacity = isReturning ? Math.max(0.4, focusLerp) : 1;
       card.style.zIndex = 500;
       card.style.pointerEvents = 'auto';
     } else if (dist < 600 && helixZ > -800) {
