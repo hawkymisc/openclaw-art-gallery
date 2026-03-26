@@ -72,24 +72,25 @@ body {
   transition: transform 0.4s cubic-bezier(0.2, 0, 0.2, 1),
               border-color 0.4s,
               box-shadow 0.4s,
-              padding 0.4s;
+              filter 0.4s;
   transform-origin: center center;
-  /* Sharpen text in 3D context */
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
   will-change: transform;
+  /* Dreamy underwater blur — text sharpens on hover/focus */
+  filter: blur(0.8px);
 }
 
 /* Focused card: click to face camera and enlarge */
 .card-3d.focused .card-face {
   box-shadow: 0 0 60px rgba(212,168,87,0.25), 0 0 120px rgba(100,100,200,0.08);
   border-color: rgba(212,168,87,0.4);
+  filter: blur(0);
 }
 
-/* Hover glow (no scale — scale is handled by JS to keep text layout) */
+/* Hover: sharpen + glow */
 .card-3d:hover .card-face {
   box-shadow: 0 0 40px rgba(212,168,87,0.18);
   border-color: rgba(212,168,87,0.3);
+  filter: blur(0);
 }
 
 /* Drag cursor */
