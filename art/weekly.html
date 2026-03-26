@@ -19,7 +19,6 @@ body {
 
 /* Scroll spacer — gives us room to scroll */
 .scroll-spacer {
-  height: calc(27 * 220px + 100vh);
   pointer-events: none;
 }
 
@@ -696,6 +695,19 @@ const viewport = document.querySelector('.viewport');
 const dialoguePanel = document.getElementById('dialoguePanel');
 const panelContent = document.getElementById('panelContent');
 const panelClose = document.getElementById('panelClose');
+// Layout params — responsive
+function getLayout() {
+  const mobile = window.innerWidth <= 768;
+  return {
+    mobile,
+    radius: mobile ? 0 : 320,
+    angleStep: mobile ? 0 : 52,
+    yStep: mobile ? 260 : 200,
+    // Mobile: gentle left-right alternation
+    mobileOffsetX: mobile ? 40 : 0,
+    panelPx: mobile ? 0 : 380,
+  };
+}
 const RADIUS = 320;
 const ANGLE_STEP = 52;
 const Y_STEP = 200;
@@ -767,7 +779,7 @@ const cards = document.querySelectorAll('.card-3d');
 const header = document.getElementById('header');
 const hint = document.getElementById('scrollHint');
 const depth = document.getElementById('depth');
-const totalHeight = DATA.length * Y_STEP;
+let totalHeight = DATA.length * Y_STEP;
 
 // Click empty space to unfocus
 viewport.addEventListener('click', (e) => {
@@ -871,67 +883,92 @@ function update(t) {
   const dIdx = Math.min(Math.floor(progress * depthNames.length), depthNames.length - 1);
   depth.textContent = depthNames[dIdx];
 
-  // Camera position — constant rotation rate per card (not per depth)
+  const L = getLayout();
+  totalHeight = DATA.length * (L.mobile ? L.yStep : Y_STEP);
+
+  // Camera position
   const camY = progress * totalHeight;
-  // Fixed rotation: each card's angular position in helix is static,
-  // camera just adds drag offset (no scroll-linked rotation)
   const camRotY = dragOffsetX;
 
   cards.forEach((card, i) => {
-    const angle = i * ANGLE_STEP;
-    const angleRad = (angle - camRotY) * (Math.PI / 180);
-    const cardY = i * Y_STEP;
+    const cardY = i * (L.mobile ? L.yStep : Y_STEP);
     const relY = cardY - camY + dragOffsetY;
 
     // Underwater sway offset
     const swayPhase = time * (0.8 + i * 0.05) + i * 1.7;
-    const swayAmp = (i === focusedIndex) ? 3 : 12;
+    const swayAmp = (i === focusedIndex) ? 3 : (L.mobile ? 6 : 12);
     const swayX = Math.sin(swayPhase) * swayAmp;
     const swayY = Math.cos(swayPhase * 0.7) * (swayAmp * 0.5);
-    const swayRot = Math.sin(swayPhase * 0.5) * (i === focusedIndex ? 0.3 : 1.5);
+    const swayRot = Math.sin(swayPhase * 0.5) * (i === focusedIndex ? 0.3 : (L.mobile ? 0.8 : 1.5));
 
-    // Helix position (stable — rotation only from drag, not scroll)
-    const helixX = Math.sin(angleRad) * RADIUS + swayX;
-    const helixZ = Math.cos(angleRad) * RADIUS - 400;
-    const helixRotY = angle - camRotY + 180;
+    // --- Position depends on layout mode ---
+    let helixX, helixZ, helixRotY;
 
-    // Per-card focus lerp: focused or returning card transitions
+    if (L.mobile) {
+      // Mobile: vertical descent with gentle left-right alternation
+      const side = (i % 2 === 0) ? -1 : 1;
+      helixX = side * L.mobileOffsetX + swayX;
+      // Vary z-depth slightly for parallax depth feel
+      helixZ = -300 + Math.sin(i * 0.7) * 40;
+      // Subtle rotation: alternate tilt direction
+      helixRotY = side * 3 + swayRot * 0.5;
+    } else {
+      // Desktop: helix
+      const angle = i * ANGLE_STEP;
+      const angleRad = (angle - camRotY) * (Math.PI / 180);
+      helixX = Math.sin(angleRad) * RADIUS + swayX;
+      helixZ = Math.cos(angleRad) * RADIUS - 400;
+      helixRotY = angle - camRotY + 180;
+    }
+
+    // Per-card focus lerp
     let cardFocusT = 0;
     if (i === focusedIndex) {
       cardFocusT = focusLerp;
     } else if (i === prevFocusedIndex && focusedIndex < 0 && focusLerp > 0) {
-      cardFocusT = focusLerp; // apply lerp during return animation
+      cardFocusT = focusLerp;
     }
 
-    // Focused position: center card in available space (away from panel)
-    const isMobile = window.innerWidth <= 768;
-    const panelPx = isMobile ? 0 : 380;
-    // Projection factor at focusZ=-100 with perspective=900: 900/(900+100) = 0.9
-    // Screen offset needed = -panelPx/2; 3D offset = screenOffset / 0.9
-    const focusX = -(panelPx / 2) / 0.9 + swayX * 0.3;
-    const focusZ = -100;
-    const focusRotY = camRotY; // face camera regardless of drag
-    // On mobile, shift card up so it doesn't overlap with bottom panel (50vh)
-    const focusRelY = isMobile ? -150 + swayY * 0.3 : swayY * 0.3;
+    // Focused position
+    let focusX, focusZ, focusRotYVal, focusRelY;
+    if (L.mobile) {
+      // Mobile: center card, move closer, shift up for bottom panel
+      focusX = swayX * 0.2;
+      focusZ = -150;
+      focusRotYVal = 0;
+      focusRelY = -120 + swayY * 0.2;
+    } else {
+      // Desktop: shift left for right panel
+      focusX = -(L.panelPx / 2) / 0.9 + swayX * 0.3;
+      focusZ = -100;
+      focusRotYVal = camRotY;
+      focusRelY = swayY * 0.3;
+    }
 
     const fx = helixX * (1 - cardFocusT) + focusX * cardFocusT;
     const fy = (relY + swayY) * (1 - cardFocusT) + focusRelY * cardFocusT;
     const fz = helixZ * (1 - cardFocusT) + focusZ * cardFocusT;
-    const fRotY = helixRotY * (1 - cardFocusT) + focusRotY * cardFocusT;
+    const fRotY = helixRotY * (1 - cardFocusT) + focusRotYVal * cardFocusT;
 
-    // Scale up when focused (width stays fixed, text doesn't reflow)
-    const sc = 1 + cardFocusT * 0.3;
+    // Scale
+    const sc = 1 + cardFocusT * (L.mobile ? 0.05 : 0.3);
 
     card.style.transform =
       `translate3d(${fx}px, ${fy}px, ${fz}px) rotateY(${fRotY}deg) rotateZ(${swayRot}deg) scale(${sc})`;
 
-    // Fade — focused card always full opacity
+    // Fade
     const dist = Math.abs(relY);
     const isReturning = (i === prevFocusedIndex && focusedIndex < 0 && focusLerp > 0);
     if ((i === focusedIndex || isReturning) && focusLerp > 0.1) {
       card.style.opacity = isReturning ? Math.max(0.4, focusLerp) : 1;
       card.style.zIndex = 500;
       card.style.pointerEvents = 'auto';
+    } else if (L.mobile) {
+      // Mobile: simpler distance-based fade (no z-check needed)
+      const fade = Math.max(0, 1 - dist / 500);
+      card.style.opacity = (focusedIndex >= 0) ? fade * 0.25 : fade;
+      card.style.zIndex = 0;
+      card.style.pointerEvents = fade > 0.1 ? 'auto' : 'none';
     } else if (dist < 600 && helixZ > -800) {
       const zFade = Math.max(0.2, 1 - Math.abs(helixZ + 400) / 600);
       const baseFade = Math.max(0, 1 - dist / 600) * zFade;
@@ -952,6 +989,16 @@ function update(t) {
 
   requestAnimationFrame(update);
 }
+
+// Set scroll spacer height based on layout
+function updateSpacerHeight() {
+  const L = getLayout();
+  const step = L.mobile ? L.yStep : Y_STEP;
+  document.querySelector('.scroll-spacer').style.height =
+    (DATA.length * step + window.innerHeight) + 'px';
+}
+updateSpacerHeight();
+window.addEventListener('resize', updateSpacerHeight);
 
 requestAnimationFrame(update);
 
