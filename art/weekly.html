@@ -54,6 +54,7 @@ body {
   /* Underwater sway */
   animation: sway var(--sway-dur, 6s) ease-in-out infinite;
   animation-delay: var(--sway-delay, 0s);
+  backface-visibility: hidden;
 }
 
 @keyframes sway {
@@ -63,8 +64,7 @@ body {
 }
 
 .card-face {
-  background: rgba(10, 10, 30, 0.85);
-  backdrop-filter: blur(8px);
+  background: rgba(10, 10, 30, 0.92);
   border: 1px solid rgba(255,255,255,0.05);
   border-radius: 10px;
   padding: 1.4rem 1.8rem;
@@ -74,6 +74,10 @@ body {
               box-shadow 0.4s,
               padding 0.4s;
   transform-origin: center center;
+  /* Sharpen text in 3D context */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  will-change: transform;
 }
 
 /* Focused card: click to face camera and enlarge */
@@ -954,7 +958,7 @@ function update(t) {
     const sc = 1 + cardFocusT * (L.mobile ? 0.05 : 0.3);
 
     card.style.transform =
-      `translate3d(${fx}px, ${fy}px, ${fz}px) rotateY(${fRotY}deg) rotateZ(${swayRot}deg) scale(${sc})`;
+      `translate3d(${Math.round(fx)}px, ${Math.round(fy)}px, ${Math.round(fz)}px) rotateY(${fRotY.toFixed(1)}deg) rotateZ(${swayRot.toFixed(1)}deg) scale(${sc.toFixed(3)})`;
 
     // Fade
     const dist = Math.abs(relY);
