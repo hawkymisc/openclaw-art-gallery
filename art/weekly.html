@@ -54,7 +54,6 @@ body {
   /* Underwater sway */
   animation: sway var(--sway-dur, 6s) ease-in-out infinite;
   animation-delay: var(--sway-delay, 0s);
-  backface-visibility: hidden;
 }
 
 @keyframes sway {
@@ -942,6 +941,12 @@ function update(t) {
       helixRotY = angle - camRotY + 180;
     }
 
+    // How much does this card face the camera? (1 = front, 0 = side, -1 = back)
+    // cosAngle based on helixZ: front of helix has higher Z (closer)
+    const facingRaw = L.mobile ? 1 : (helixZ + 400) / RADIUS; // normalized -1..1
+    // Map to opacity factor: front=1.0, side=0.5, back=0.25
+    const facingFactor = L.mobile ? 1 : 0.25 + 0.75 * Math.max(0, (facingRaw + 1) / 2);
+
     // Per-card focus lerp
     let cardFocusT = 0;
     if (i === focusedIndex) {
@@ -991,15 +996,15 @@ function update(t) {
       card.style.opacity = Math.min(1, (focusedIndex >= 0) ? fade * 0.25 : fade);
       card.style.zIndex = 0;
       card.style.pointerEvents = fade > 0.1 ? 'auto' : 'none';
-    } else if (dist < 900 && helixZ > -900) {
-      // Wider visibility range; softer z-fade
-      const zFade = Math.max(0.15, 1 - Math.abs(helixZ + 300) / 800);
+    } else if (dist < 900) {
+      // All cards visible — facing factor controls front/back opacity
       const distFade = Math.max(0, 1 - dist / 900);
-      const baseFade = distFade * zFade + topLight;
+      const baseFade = (distFade * facingFactor + topLight);
       card.style.opacity = Math.min(1, (focusedIndex >= 0) ? baseFade * 0.3 : baseFade);
-      card.style.zIndex = 0;
+      card.style.zIndex = Math.round(facingRaw * 100);
       card.style.pointerEvents = baseFade > 0.05 ? 'auto' : 'none';
     } else {
+      // Only fully hide cards that are very far in Y
       card.style.opacity = 0;
       card.style.zIndex = 0;
       card.style.pointerEvents = 'none';
