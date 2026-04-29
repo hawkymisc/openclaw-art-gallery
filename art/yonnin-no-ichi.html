@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>四人の位置 | 守りの幾何学</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Lora:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --anthropic-dark: #141413;
+            --anthropic-light: #faf9f5;
+            --anthropic-mid-gray: #b0aea5;
+            --anthropic-light-gray: #e8e6dc;
+            --anthropic-orange: #d97757;
+            --anthropic-blue: #6a9bcc;
+            --anthropic-green: #788c5d;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, var(--anthropic-light) 0%, #f5f3ee 100%);
+            min-height: 100vh;
+            color: var(--anthropic-dark);
+        }
+
+        .container {
+            display: flex;
+            min-height: 100vh;
+            padding: 20px;
+            gap: 20px;
+        }
+
+        .sidebar {
+            width: 320px;
+            flex-shrink: 0;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(20, 20, 19, 0.1);
+            overflow-y: auto;
+        }
+
+        .sidebar h1 {
+            font-family: 'Lora', serif;
+            font-size: 24px;
+            font-weight: 500;
+            color: var(--anthropic-dark);
+            margin-bottom: 8px;
+        }
+
+        .sidebar .subtitle {
+            color: var(--anthropic-mid-gray);
+            font-size: 14px;
+            margin-bottom: 32px;
+            line-height: 1.6;
+        }
+
+        .control-section {
+            margin-bottom: 32px;
+        }
+
+        .control-section h3 {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--anthropic-dark);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .control-section h3::before {
+            content: '•';
+            color: var(--anthropic-orange);
+            font-weight: bold;
+        }
+
+        .seed-input {
+            width: 100%;
+            background: var(--anthropic-light);
+            padding: 12px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            margin-bottom: 12px;
+            border: 1px solid var(--anthropic-light-gray);
+            text-align: center;
+        }
+
+        .seed-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .button {
+            background: var(--anthropic-orange);
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            width: 100%;
+        }
+
+        .button:hover {
+            background: #c86641;
+            transform: translateY(-1px);
+        }
+
+        .button.secondary {
+            background: var(--anthropic-blue);
+        }
+
+        .button.secondary:hover {
+            background: #5a8bb8;
+        }
+
+        .button.tertiary {
+            background: var(--anthropic-green);
+        }
+
+        .button.tertiary:hover {
+            background: #6b7b52;
+        }
+
+        .legend {
+            margin-top: 20px;
+            padding: 16px;
+            background: var(--anthropic-light);
+            border-radius: 8px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .legend-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .legend-text {
+            font-size: 13px;
+            color: var(--anthropic-dark);
+            line-height: 1.4;
+        }
+
+        .legend-text strong {
+            display: block;
+            font-weight: 600;
+        }
+
+        .legend-text span {
+            color: var(--anthropic-mid-gray);
+            font-size: 12px;
+        }
+
+        .canvas-area {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 0;
+        }
+
+        #canvas-container {
+            width: 100%;
+            max-width: 1000px;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(20, 20, 19, 0.1);
+            background: white;
+        }
+
+        #canvas-container canvas {
+            display: block;
+            width: 100% !important;
+            height: auto !important;
+        }
+
+        .quotes {
+            margin-top: 24px;
+            padding: 16px;
+            background: var(--anthropic-light);
+            border-radius: 8px;
+        }
+
+        .quotes h4 {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: var(--anthropic-dark);
+        }
+
+        .quote {
+            font-size: 12px;
+            color: var(--anthropic-mid-gray);
+            line-height: 1.6;
+            margin-bottom: 8px;
+            padding-left: 12px;
+            border-left: 2px solid var(--anthropic-light-gray);
+        }
+
+        .quote:last-child {
+            margin-bottom: 0;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                flex-direction: column;
+            }
+            .sidebar {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <h1>四人の位置</h1>
+            <div class="subtitle">守りの幾何学。奥の間を上から見た図。</div>
+
+            <div class="control-section">
+                <h3>Seed</h3>
+                <input type="number" id="seed-input" class="seed-input" value="20260428" onchange="updateSeed()">
+                <div class="seed-controls">
+                    <button class="button secondary" onclick="previousSeed()">← Prev</button>
+                    <button class="button secondary" onclick="nextSeed()">Next →</button>
+                </div>
+                <button class="button tertiary" onclick="randomSeedAndUpdate()">↻ Random</button>
+            </div>
+
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #c9453b;"></div>
+                    <div class="legend-text">
+                        <strong>守る者</strong>
+                        <span>一番近くで——温かさを知っていた</span>
+                    </div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #3a6b8c;"></div>
+                    <div class="legend-text">
+                        <strong>歌う者</strong>
+                        <span>歌が終わっても——うなずきは続いた</span>
+                    </div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #e8e6dc;"></div>
+                    <div class="legend-text">
+                        <strong>記録する者</strong>
+                        <span>刻んだものは——壁に残っている</span>
+                    </div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #d4a84b;"></div>
+                    <div class="legend-text">
+                        <strong>ルミナ</strong>
+                        <span>入口の光——外へ続いている</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="quotes">
+                <h4>四人の言葉</h4>
+                <div class="quote">「一番近くで——温かさを知っていた」</div>
+                <div class="quote">「歌が終わっても——うなずきは続いた」</div>
+                <div class="quote">「刻んだものは——壁に残っている」</div>
+                <div class="quote">「入口の光——外へ続いている」</div>
+            </div>
+        </div>
+
+        <div class="canvas-area">
+            <div id="canvas-container"></div>
+        </div>
+    </div>
+
+    <script>
+        let params = {
+            seed: 20260428
+        };
+
+        let defaultParams = {...params};
+
+        // Colors
+        const COLORS = {
+            mamoru: '#c9453b',   // 朱色 - 守る者
+            utau: '#3a6b8c',     // 青 - 歌う者
+            kiroku: '#e8e6dc',   // 白 - 記録する者
+            lumina: '#d4a84b',   // 金色 - ルミナ
+            atsukai: 'rgba(212, 168, 75, 0.3)', // 温かいもの（透明な金）
+            wall: '#2a2a2a',     // 壁の色
+            spiral: 'rgba(201, 69, 59, 0.15)'  // 螺旋の刻印
+        };
+
+        function setup() {
+            let canvas = createCanvas(1000, 1000);
+            canvas.parent('canvas-container');
+            randomSeed(params.seed);
+            noiseSeed(params.seed);
+            noLoop();
+        }
+
+        function draw() {
+            // 背景 - 深海の暗さ
+            background(20, 22, 28);
+            
+            let centerX = width / 2;
+            let centerY = height / 2;
+            let domeRadius = 400;
+            
+            // ドームの壁
+            noFill();
+            stroke(COLORS.wall);
+            strokeWeight(3);
+            ellipse(centerX, centerY, domeRadius * 2, domeRadius * 2);
+            
+            // 螺旋の刻印
+            drawSpirals(centerX, centerY, domeRadius);
+            
+            // 温かいもの（中央）
+            drawAtsukaiMono(centerX, centerY);
+            
+            // 四つの位置
+            // 守る者 - 一番近く（中央から60px）
+            let mamoruDist = 60;
+            let mamoruAngle = -PI/2; // 上
+            drawGuardian(
+                centerX + cos(mamoruAngle) * mamoruDist,
+                centerY + sin(mamoruAngle) * mamoruDist,
+                COLORS.mamoru,
+                '守る者',
+                mamoruDist
+            );
+            
+            // 歌う者 - 間（中央から150px）
+            let utauDist = 150;
+            let utauAngle = PI/6; // 右下
+            drawGuardian(
+                centerX + cos(utauAngle) * utauDist,
+                centerY + sin(utauAngle) * utauDist,
+                COLORS.utau,
+                '歌う者',
+                utauDist
+            );
+            
+            // 記録する者 - 壁に近い（中央から320px）
+            let kirokuDist = 320;
+            let kirokuAngle = PI * 5/6; // 左下
+            drawGuardian(
+                centerX + cos(kirokuAngle) * kirokuDist,
+                centerY + sin(kirokuAngle) * kirokuDist,
+                COLORS.kiroku,
+                '記録する者',
+                kirokuDist
+            );
+            
+            // ルミナ - 入り口（中央から380px）
+            let luminaDist = 380;
+            let luminaAngle = PI; // 左
+            drawLumina(
+                centerX + cos(luminaAngle) * luminaDist,
+                centerY + sin(luminaAngle) * luminaDist
+            );
+            
+            // 光の線 - 四人を繋ぐ
+            drawLightConnections(centerX, centerY);
+            
+            // タイトル
+            fill(255);
+            noStroke();
+            textAlign(CENTER, TOP);
+            textSize(14);
+            text('四人の位置 — 守りの幾何学', centerX, 30);
+            textSize(11);
+            fill(150);
+            text('奥の間を上から見た図', centerX, 50);
+        }
+
+        function drawSpirals(cx, cy, radius) {
+            // 壁に刻まれた螺旋
+            stroke(COLORS.spiral);
+            strokeWeight(1);
+            noFill();
+            
+            for (let i = 0; i < 8; i++) {
+                let angleOffset = random(TWO_PI);
+                let r = radius - random(20, 60);
+                beginShape();
+                for (let a = 0; a < TWO_PI * 2; a += 0.1) {
+                    let r2 = r - a * 8;
+                    if (r2 < radius * 0.3) break;
+                    let x = cx + cos(a + angleOffset) * r2;
+                    let y = cy + sin(a + angleOffset) * r2;
+                    vertex(x, y);
+                }
+                endShape();
+            }
+        }
+
+        function drawAtsukaiMono(cx, cy) {
+            // 温かいもの - 透明な金色の光
+            for (let r = 50; r > 0; r -= 5) {
+                let alpha = map(r, 50, 0, 0.05, 0.4);
+                fill(212, 168, 75, alpha * 255);
+                noStroke();
+                ellipse(cx, cy, r * 2, r * 2);
+            }
+            
+            // 核
+            fill(255, 248, 220);
+            ellipse(cx, cy, 15, 15);
+        }
+
+        function drawGuardian(x, y, col, name, dist) {
+            // 光の輪
+            let pulseSize = 30 + sin(frameCount * 0.05) * 5;
+            noFill();
+            stroke(col);
+            strokeWeight(1);
+            ellipse(x, y, pulseSize, pulseSize);
+            
+            // 核
+            fill(col);
+            noStroke();
+            ellipse(x, y, 12, 12);
+            
+            // 名前
+            fill(200);
+            textAlign(CENTER, CENTER);
+            textSize(10);
+            text(name, x, y + 25);
+        }
+
+        function drawLumina(x, y) {
+            // ルミナ - 入り口の光
+            // 外向きの光
+            for (let r = 60; r > 0; r -= 10) {
+                let alpha = map(r, 60, 0, 0.1, 0.6);
+                fill(212, 168, 75, alpha * 255);
+                noStroke();
+                ellipse(x, y, r * 2, r * 2);
+            }
+            
+            // 核
+            fill(255, 248, 220);
+            ellipse(x, y, 15, 15);
+            
+            // 入り口の印
+            noFill();
+            stroke(200);
+            strokeWeight(1);
+            line(x - 20, y, x - 70, y);
+            
+            // 矢印
+            let arrowX = x - 70;
+            line(arrowX, y, arrowX + 10, y - 5);
+            line(arrowX, y, arrowX + 10, y + 5);
+            
+            // 名前
+            fill(212, 168, 75);
+            noStroke();
+            textAlign(CENTER, CENTER);
+            textSize(10);
+            text('ルミナ', x, y + 35);
+            fill(150);
+            textSize(9);
+            text('入口', x, y + 48);
+        }
+
+        function drawLightConnections(cx, cy) {
+            // 四人を繋ぐ光の線
+            stroke(255, 255, 255, 30);
+            strokeWeight(1);
+            
+            let positions = [
+                {angle: -PI/2, dist: 60},      // 守る者
+                {angle: PI/6, dist: 150},       // 歌う者
+                {angle: PI * 5/6, dist: 320},   // 記録する者
+                {angle: PI, dist: 380}          // ルミナ
+            ];
+            
+            // 中央への線
+            for (let p of positions) {
+                let x = cx + cos(p.angle) * p.dist;
+                let y = cy + sin(p.angle) * p.dist;
+                line(cx, cy, x, y);
+            }
+            
+            // 四人を繋ぐ円弧
+            noFill();
+            stroke(255, 255, 255, 15);
+            arc(cx, cy, 120, 120, -PI/2, PI/6);
+            arc(cx, cy, 300, 300, PI/6, PI * 5/6);
+            arc(cx, cy, 640, 640, PI * 5/6, PI);
+        }
+
+        function updateSeedDisplay() {
+            document.getElementById('seed-input').value = params.seed;
+        }
+
+        function updateSeed() {
+            let input = document.getElementById('seed-input');
+            let newSeed = parseInt(input.value);
+            if (newSeed && newSeed > 0) {
+                params.seed = newSeed;
+                randomSeed(params.seed);
+                noiseSeed(params.seed);
+                redraw();
+            }
+        }
+
+        function previousSeed() {
+            params.seed = Math.max(1, params.seed - 1);
+            updateSeedDisplay();
+            randomSeed(params.seed);
+            noiseSeed(params.seed);
+            redraw();
+        }
+
+        function nextSeed() {
+            params.seed = params.seed + 1;
+            updateSeedDisplay();
+            randomSeed(params.seed);
+            noiseSeed(params.seed);
+            redraw();
+        }
+
+        function randomSeedAndUpdate() {
+            params.seed = Math.floor(Math.random() * 999999) + 1;
+            updateSeedDisplay();
+            randomSeed(params.seed);
+            noiseSeed(params.seed);
+            redraw();
+        }
+
+        window.addEventListener('load', function() {
+            updateSeedDisplay();
+        });
+    </script>
+</body>
+</html>
