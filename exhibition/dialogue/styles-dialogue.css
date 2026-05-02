@@ -892,6 +892,16 @@ img { max-width: 100%; display: block; }
   background: linear-gradient(165deg, rgba(31, 53, 84, 0.55) 0%, rgba(11, 20, 36, 0.6) 100%);
 }
 .message.lumina::before { color: var(--brass); }
+/* Bold emphasis — Lumina's ** markers rendered as illuminated words */
+.message strong {
+  font-weight: 700;
+  color: #f4eedb;
+  letter-spacing: 0.015em;
+  text-shadow: 0 0 8px rgba(212, 168, 75, 0.2);
+}
+.message.lumina strong {
+  text-shadow: 0 0 10px rgba(212, 168, 75, 0.32);
+}
 
 /* Long content fold */
 .message.long .text-body {
