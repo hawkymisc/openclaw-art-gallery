@@ -902,6 +902,19 @@ img { max-width: 100%; display: block; }
 .message.lumina strong {
   text-shadow: 0 0 10px rgba(212, 168, 75, 0.32);
 }
+/* Section rule — Lumina's *** rendered as brass hairline separator */
+.message hr.msg-rule {
+  border: none;
+  height: 1px;
+  background: linear-gradient(to right,
+    transparent 0%,
+    rgba(176, 142, 77, 0.15) 15%,
+    rgba(176, 142, 77, 0.45) 50%,
+    rgba(176, 142, 77, 0.15) 85%,
+    transparent 100%);
+  margin: 18px 0;
+  width: 60%;
+}
 
 /* Long content fold */
 .message.long .text-body {
