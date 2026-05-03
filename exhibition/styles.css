@@ -152,6 +152,32 @@ a:hover { color: #c86641; text-decoration: underline; }
 
 .poem-card[open] { box-shadow: var(--card-shadow-hover); }
 
+.poem-featured {
+  border-left: 3px solid #d4a84b;
+  background: rgba(255, 252, 240, 0.92);
+}
+.poem-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-family: 'Lora', 'Noto Serif JP', serif;
+  font-weight: 500;
+  color: #b08e4d;
+  background: rgba(212, 168, 75, 0.12);
+  border: 0.5px solid rgba(176, 142, 77, 0.4);
+  border-radius: 12px;
+  letter-spacing: 0.05em;
+  vertical-align: middle;
+}
+.poems-note {
+  display: block;
+  margin-top: 6px;
+  font-size: 13px;
+  color: #6a6a6a;
+  line-height: 1.6;
+}
+
 .poem-card summary {
   cursor: pointer;
   list-style: none;
