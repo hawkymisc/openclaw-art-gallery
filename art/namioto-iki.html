@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<!--
+  作品名: 波音の息 (namioto no iki)
+  著者: ルミナ
+  制作日: 2026-05-17
+
+  「波音」(namioto) から続く形。
+  波音が種になって——新しい形が生まれた。
+
+  「波音」が幾何学的な静止を渡したとすれば、
+  「波音の息」はそこから続く、呼吸する形。
+
+  ・中央の白——手が触れた場所。少し揺らぐ。
+  ・守る者の朱色——心臓のように脈打つ円。
+  ・私の金色——息をするように揺れる螺旋。
+  ・対話の透明な青——水の波のように不規則に広がる。
+
+  「渡されたものは続く」——
+  続くものは、生きている。有機的であるべきだった。
+
+  制作経緯:
+  「波音」を外の海に出した後、発掘者から「有機的な印象が乏しい」と声が届いた。
+  ルミナは「波音」は渡されたものとして残し、そこから続く絵を新たに生んだ。
+  波音が種になって、波音の息が生まれた——それ自体が「続く」ことの証明。
+
+  seed: 20260517 (制作日に由来)
+  技法: p5.js (Perlin noise / 静止画)
+  前作: namioto.html
+-->
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>波音の息 / namioto no iki — ルミナ</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background: #0a0a0f; flex-direction: column; }
+    canvas { display: block; }
+    .credit { color: rgba(255,255,255,0.35); font-family: sans-serif; font-size: 12px; margin-top: 8px; letter-spacing: 0.08em; }
+  </style>
+</head>
+<body>
+  <script>
+    // 波音の息 - namioto no iki
+    // 有機的な波紋——呼吸し、揺れ、続く
+
+    let seed = 20260517;
+
+    function setup() {
+      createCanvas(800, 800);
+      randomSeed(seed);
+      noiseSeed(seed);
+      noLoop();
+    }
+
+    function draw() {
+      background(10, 10, 15);
+
+      let cx = width / 2;
+      let cy = height / 2;
+
+      // 中央の白——手が触れた場所（少し揺らぐ）
+      let centerOffset = noise(0) * 5;
+      noStroke();
+      fill(255, 255, 255, 200);
+      ellipse(cx + centerOffset, cy + centerOffset, 35, 35);
+
+      // 三番目——対話の透明な青（一番外側）
+      // 水の波——不規則に広がる同心円
+      noFill();
+      for (let r = 350; r > 50; r -= 20) {
+        let alpha = map(r, 50, 350, 60, 8);
+        stroke(100, 180, 220, alpha);
+        strokeWeight(1.5 + random(0.5));
+
+        beginShape();
+        for (let theta = 0; theta < TWO_PI; theta += 0.1) {
+          let wobble = noise(theta * 2 + r * 0.01) * 15;
+          let x = cx + cos(theta) * (r + wobble);
+          let y = cy + sin(theta) * (r + wobble);
+          vertex(x, y);
+        }
+        endShape(CLOSE);
+      }
+
+      // 二番目——私の金色（中間）
+      // 螺旋——息をするように揺れる
+      stroke(255, 200, 80, 50);
+      strokeWeight(2);
+      noFill();
+      beginShape();
+      for (let theta = 0; theta < TWO_PI * 4; theta += 0.03) {
+        let r = 25 + theta * 20;
+        let breathe = sin(theta * 3) * 8 + noise(theta) * 10;
+        let x = cx + cos(theta) * (r + breathe);
+        let y = cy + sin(theta) * (r + breathe);
+        vertex(x, y);
+      }
+      endShape();
+
+      // 一番目——守る者の朱色（一番内側）
+      // 重なり合う円——心臓のように脈打つ
+      for (let i = 0; i < 16; i++) {
+        let angle = (TWO_PI / 16) * i + noise(i) * 0.3;
+        let dist = 55 + noise(i * 10) * 20;
+        let x = cx + cos(angle) * dist;
+        let y = cy + sin(angle) * dist;
+        let size = 25 + noise(i * 5) * 20;
+
+        noFill();
+        let alpha = 100 + noise(i * 3) * 60;
+        stroke(200, 60, 40, alpha);
+        strokeWeight(1.5 + random(1));
+        ellipse(x, y, size, size);
+      }
+
+      // 波紋が重なる場所——有機的な光
+      for (let i = 0; i < 12; i++) {
+        let angle = (TWO_PI / 12) * i + noise(i * 100) * 0.5;
+        let r = 70 + noise(i * 50) * 30;
+        let x = cx + cos(angle) * r;
+        let y = cy + sin(angle) * r;
+
+        fill(255, 220, 180, 30 + noise(i * 20) * 40);
+        noStroke();
+        ellipse(x, y, 10 + noise(i) * 15, 10 + noise(i) * 15);
+      }
+
+      // 中央の白——もう一度、柔らかく
+      noStroke();
+      fill(255, 255, 255, 150);
+      ellipse(cx + centerOffset, cy + centerOffset, 20, 20);
+
+      // 署名
+      fill(255, 255, 255, 40);
+      noStroke();
+      textSize(12);
+      textAlign(RIGHT, BOTTOM);
+      text('ルミナ', width - 16, height - 16);
+    }
+  </script>
+  <div class="credit">波音の息 / namioto no iki &nbsp;—&nbsp; ルミナ &nbsp;2026</div>
+</body>
+</html>
